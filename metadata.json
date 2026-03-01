@@ -1,0 +1,8 @@
+{
+  "name": "EduQuest Pro - Portal do Professor",
+  "description": "Uma plataforma avançada para professores criarem avaliações, gerarem questões com IA e gerenciarem o progresso acadêmico.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
