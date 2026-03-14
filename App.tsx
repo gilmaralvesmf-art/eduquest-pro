@@ -8,6 +8,7 @@ import Landing from './pages/Landing';
 import Correction from './pages/Correction';
 import Assessments from './pages/Assessments';
 import History from './pages/History';
+import ManualCorrection from './pages/ManualCorrection';
 
 // Fallback for missing pages
 const Placeholder = ({ name }: { name: string }) => (
@@ -38,6 +39,7 @@ const AppRoutes = () => {
         <Route path="/assessments" element={<Assessments />} />
         <Route path="/history" element={<History />} />
         <Route path="/correct" element={<Correction />} />
+        <Route path="/manual-correct" element={<ManualCorrection />} />
       </Routes>
     </Layout>
   );

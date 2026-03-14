@@ -11,7 +11,8 @@ import {
   LogOut, 
   Menu, 
   X,
-  GraduationCap
+  GraduationCap,
+  Camera
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -27,6 +28,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Banco de Questões', icon: Library, path: '/bank' },
     { name: 'Estúdio IA', icon: BrainCircuit, path: '/ai-studio' },
     { name: 'Minhas Avaliações', icon: FileText, path: '/assessments' },
+    { name: 'Correção Rápida', icon: Camera, path: '/manual-correct' },
     { name: 'Histórico', icon: History, path: '/history' },
   ];
 

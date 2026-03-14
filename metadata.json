@@ -1,6 +1,6 @@
 {
   "name": "EduQuest Pro - Portal do Professor",
-  "description": "Uma plataforma avançada para professores criarem avaliações, gerarem questões com IA e gerenciarem o progresso acadêmico.",
+  "description": "Plataforma avançada para professores: gere questões com IA, exporte PDFs personalizados (Aluno/Professor) e faça correção automática por câmera.",
   "requestFramePermissions": [
     "camera",
     "microphone"

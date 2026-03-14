@@ -1,6 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { BrainCircuit, Sparkles, Send, Loader2, CheckCircle2, Clipboard, FileText, QrCode, Download, Printer, Camera, AlertCircle, ChevronRight, History, Trash2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { generateQuestions } from '../services/geminiService';
 import { storageService } from '../services/storageService';
 import { Question, Difficulty } from '../types';
@@ -17,6 +19,7 @@ const AIStudio: React.FC = () => {
   const [board, setBoard] = useState('ENEM');
   const [difficulty, setDifficulty] = useState<Difficulty>(Difficulty.MEDIUM);
   const [count, setCount] = useState(5);
+  const [questionType, setQuestionType] = useState<'multiple_choice' | 'open'>('multiple_choice');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -30,7 +33,7 @@ const AIStudio: React.FC = () => {
     setError(null);
     setShowExam(false);
     try {
-      const result = await generateQuestions(subject, topic, count, difficulty, board);
+      const result = await generateQuestions(subject, topic, count, difficulty, board, questionType);
       if (result && result.length > 0) {
         setQuestions(result);
         // Save to storage
@@ -115,6 +118,23 @@ const AIStudio: React.FC = () => {
               Configuração
             </h2>
             
+            <div className="flex bg-slate-100 p-1 rounded-xl mb-6">
+              <button
+                type="button"
+                onClick={() => setQuestionType('multiple_choice')}
+                className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${questionType === 'multiple_choice' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Múltipla Escolha
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuestionType('open')}
+                className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${questionType === 'open' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Discursiva
+              </button>
+            </div>
+
             <form onSubmit={handleGenerate} className="space-y-6">
               <div className="space-y-2">
                 <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Disciplina</label>
@@ -155,13 +175,35 @@ const AIStudio: React.FC = () => {
                   onChange={(e) => setBoard(e.target.value)}
                   className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:border-indigo-600 focus:bg-white outline-none transition-all appearance-none"
                 >
-                  <option>ENEM</option>
-                  <option>VUNESP</option>
-                  <option>FGV</option>
-                  <option>FCC</option>
-                  <option>Cebraspe</option>
-                  <option>FUVEST</option>
-                  <option>Unicamp</option>
+                  <optgroup label="Militares">
+                    <option>ITA</option>
+                    <option>IME</option>
+                    <option>EsPCEx</option>
+                    <option>ESA</option>
+                    <option>Colégio Naval</option>
+                    <option>EPCAR</option>
+                    <option>AFA</option>
+                    <option>EFOMM</option>
+                    <option>EAM</option>
+                  </optgroup>
+                  <optgroup label="Vestibulares">
+                    <option>ENEM</option>
+                    <option>FUVEST</option>
+                    <option>UNICAMP</option>
+                    <option>UNESP (VUNESP)</option>
+                    <option>UERJ</option>
+                    <option>UFRGS</option>
+                    <option>UFSC</option>
+                    <option>URCA</option>
+                    <option>UECE</option>
+                    <option>UPE</option>
+                    <option>UFPE</option>
+                  </optgroup>
+                  <optgroup label="Concursos">
+                    <option>FGV</option>
+                    <option>FCC</option>
+                    <option>Cebraspe</option>
+                  </optgroup>
                 </select>
               </div>
 
@@ -271,25 +313,58 @@ const AIStudio: React.FC = () => {
                         </button>
                       </div>
 
-                      <p className="text-xl font-bold text-slate-900 mb-8 leading-relaxed tracking-tight">{q.text}</p>
-                      
-                      <div className="grid grid-cols-1 gap-3">
-                        {q.options?.map((opt, oIdx) => {
-                          const isCorrect = opt === q.correctAnswer;
-                          return (
-                            <div 
-                              key={oIdx} 
-                              className={`p-5 rounded-2xl border-2 flex items-center gap-4 transition-all ${isCorrect ? 'bg-emerald-50 border-emerald-500 text-emerald-900' : 'bg-slate-50 border-slate-50 text-slate-600 hover:border-slate-200'}`}
-                            >
-                              <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${isCorrect ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-100' : 'bg-white border-2 border-slate-200'}`}>
-                                {String.fromCharCode(65 + oIdx)}
-                              </div>
-                              <span className="text-base font-medium flex-1">{opt}</span>
-                              {isCorrect && <CheckCircle2 size={20} className="text-emerald-500" />}
-                            </div>
-                          );
-                        })}
+                      <div className="prose prose-slate max-w-none mb-8">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{q.text}</ReactMarkdown>
                       </div>
+                      
+                      {q.visualType && q.visualType !== 'none' && q.visualContent && (
+                        <div className="mb-8 p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                          <div className="flex items-center gap-2 mb-4">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
+                              {q.visualType === 'table' ? 'Tabela' : 
+                               q.visualType === 'graph' ? 'Gráfico' : 
+                               q.visualType === 'infographic' ? 'Infográfico' : 'Charge'}
+                            </span>
+                          </div>
+                          <div className="prose prose-sm prose-slate max-w-none overflow-x-auto">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{q.visualContent}</ReactMarkdown>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {q.questionType === 'open' ? (
+                        <div className="mt-6">
+                          <div className="p-5 rounded-2xl border-2 border-emerald-500 bg-emerald-50 text-emerald-900">
+                            <div className="flex items-center gap-2 mb-2">
+                              <CheckCircle2 size={20} className="text-emerald-500" />
+                              <span className="text-xs font-black uppercase tracking-widest text-emerald-600">Padrão de Resposta Esperado</span>
+                            </div>
+                            <div className="text-base font-medium prose prose-sm prose-slate max-w-none">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>{q.correctAnswer}</ReactMarkdown>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-3">
+                          {q.options?.map((opt, oIdx) => {
+                            const isCorrect = opt === q.correctAnswer;
+                            return (
+                              <div 
+                                key={oIdx} 
+                                className={`p-5 rounded-2xl border-2 flex items-center gap-4 transition-all ${isCorrect ? 'bg-emerald-50 border-emerald-500 text-emerald-900' : 'bg-slate-50 border-slate-50 text-slate-600 hover:border-slate-200'}`}
+                              >
+                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${isCorrect ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-100' : 'bg-white border-2 border-slate-200'}`}>
+                                  {String.fromCharCode(65 + oIdx)}
+                                </div>
+                                <div className="text-base font-medium flex-1 prose prose-sm prose-slate max-w-none">
+                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{opt}</ReactMarkdown>
+                                </div>
+                                {isCorrect && <CheckCircle2 size={20} className="text-emerald-500" />}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </motion.div>
                   ))}
                 </div>

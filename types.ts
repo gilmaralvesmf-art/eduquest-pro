@@ -16,6 +16,10 @@ export interface Question {
   year: number;
   source?: string;
   board?: string;
+  commentary?: string;
+  visualType?: 'table' | 'graph' | 'infographic' | 'charge' | 'none';
+  visualContent?: string;
+  questionType?: 'multiple_choice' | 'open';
 }
 
 export interface Assessment {
