@@ -49,8 +49,10 @@ export const Login: React.FC = () => {
         setError("Este email já está em uso.");
       } else if (err.code === 'auth/weak-password') {
         setError("A senha deve ter pelo menos 6 caracteres.");
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setError("O login por email e senha não está ativado no Firebase. Por favor, ative-o no painel do Firebase Authentication.");
       } else {
-        setError("Erro ao criar conta. Tente novamente.");
+        setError(`Erro ao criar conta: ${err.message || 'Tente novamente.'}`);
       }
     } finally {
       setLoading(false);
@@ -69,7 +71,13 @@ export const Login: React.FC = () => {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
       console.error(err);
-      setError("Email ou senha incorretos.");
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setError("Email ou senha incorretos.");
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setError("O login por email e senha não está ativado no Firebase. Por favor, ative-o no painel do Firebase Authentication.");
+      } else {
+        setError(`Erro ao fazer login: ${err.message || 'Tente novamente.'}`);
+      }
     } finally {
       setLoading(false);
     }

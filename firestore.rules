@@ -70,7 +70,7 @@ service cloud.firestore {
     // Domain Validators
     // ===============================================================
     function isValidUser(data) {
-      let allowedKeys = ['uid', 'email', 'displayName', 'photoURL', 'freeCredits', 'subscriptionStatus', 'role', 'createdAt'];
+      let allowedKeys = ['uid', 'email', 'displayName', 'photoURL', 'freeCredits', 'subscriptionStatus', 'role', 'createdAt', 'usage', 'planExpiresAt'];
       return data.keys().hasOnly(allowedKeys) &&
              data.uid is string && data.uid.size() > 0 && data.uid.size() < 100 &&
              data.email is string && isValidEmail(data.email) &&
@@ -79,7 +79,15 @@ service cloud.firestore {
              data.freeCredits is number && data.freeCredits >= 0 && (data.freeCredits <= 3 || data.role == 'admin') &&
              data.subscriptionStatus in ['free', 'monthly', 'quarterly', 'semiannual', 'annual'] &&
              data.role in ['user', 'admin'] &&
-             data.createdAt is timestamp;
+             data.createdAt is string &&
+             (!('planExpiresAt' in data) || data.planExpiresAt == null || data.planExpiresAt is string) &&
+             (!('usage' in data) || (
+               data.usage is map &&
+               data.usage.keys().hasOnly(['assessmentsGenerated', 'correctionsMade', 'lastResetDate']) &&
+               data.usage.assessmentsGenerated is number &&
+               data.usage.correctionsMade is number &&
+               data.usage.lastResetDate is string
+             ));
     }
 
     function isValidExam(data) {
