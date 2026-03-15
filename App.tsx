@@ -1,5 +1,5 @@
 import React from 'react';
-import { HashRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import AIStudio from './pages/AIStudio';
@@ -9,47 +9,63 @@ import Correction from './pages/Correction';
 import Assessments from './pages/Assessments';
 import History from './pages/History';
 import ManualCorrection from './pages/ManualCorrection';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { Login } from './pages/Login';
+import { Pricing } from './pages/Pricing';
 
-// Fallback for missing pages
-const Placeholder = ({ name }: { name: string }) => (
-  <div className="flex flex-col items-center justify-center min-h-[60vh] text-slate-400">
-    <h2 className="text-2xl font-bold mb-2">{name}</h2>
-    <p>Esta funcionalidade está sendo preparada para você.</p>
-  </div>
-);
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>;
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return <>{children}</>;
+};
 
 const AppRoutes = () => {
   const location = useLocation();
   const isLandingPage = location.pathname === '/';
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/pricing';
 
-  if (isLandingPage) {
+  if (isLandingPage || isAuthPage) {
     return (
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/pricing" element={<Pricing />} />
       </Routes>
     );
   }
 
   return (
-    <Layout>
-      <Routes>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/ai-studio" element={<AIStudio />} />
-        <Route path="/bank" element={<QuestionBank />} />
-        <Route path="/assessments" element={<Assessments />} />
-        <Route path="/history" element={<History />} />
-        <Route path="/correct" element={<Correction />} />
-        <Route path="/manual-correct" element={<ManualCorrection />} />
-      </Routes>
-    </Layout>
+    <ProtectedRoute>
+      <Layout>
+        <Routes>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/ai-studio" element={<AIStudio />} />
+          <Route path="/bank" element={<QuestionBank />} />
+          <Route path="/assessments" element={<Assessments />} />
+          <Route path="/history" element={<History />} />
+          <Route path="/correct" element={<Correction />} />
+          <Route path="/manual-correct" element={<ManualCorrection />} />
+        </Routes>
+      </Layout>
+    </ProtectedRoute>
   );
 };
 
 const App: React.FC = () => {
   return (
-    <Router>
-      <AppRoutes />
-    </Router>
+    <AuthProvider>
+      <Router>
+        <AppRoutes />
+      </Router>
+    </AuthProvider>
   );
 };
 

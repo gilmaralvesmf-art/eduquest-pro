@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Library, 
@@ -12,8 +12,11 @@ import {
   Menu, 
   X,
   GraduationCap,
-  Camera
+  Camera,
+  Crown
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { logout } from '../firebase';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -22,6 +25,17 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isSidebarOpen, setSidebarOpen] = React.useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, profile } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error("Error logging out", error);
+    }
+  };
 
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
@@ -75,13 +89,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 {item.name}
               </Link>
             ))}
+            
+            {profile?.subscriptionStatus === 'free' && (
+              <Link
+                to="/pricing"
+                className="mt-4 flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold bg-gradient-to-r from-amber-100 to-amber-50 text-amber-700 hover:from-amber-200 hover:to-amber-100 transition-colors border border-amber-200"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <Crown size={18} className="text-amber-500" />
+                Fazer Upgrade
+              </Link>
+            )}
           </nav>
 
           <div className="p-4 border-t border-slate-100">
-            <Link to="/" className="flex items-center gap-3 px-4 py-3 w-full text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors">
+            <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 w-full text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors">
               <LogOut size={18} />
               Sair
-            </Link>
+            </button>
           </div>
         </div>
       </aside>
@@ -90,15 +115,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <main className="flex-1 flex flex-col min-w-0">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-30">
           <div className="hidden lg:block">
-            <h2 className="text-sm font-medium text-slate-400">Bem-vindo de volta, Professor Silva</h2>
+            <h2 className="text-sm font-medium text-slate-400">Bem-vindo de volta, {profile?.displayName || user?.displayName || 'Professor'}</h2>
           </div>
           <div className="flex items-center gap-4">
             <button className="p-2 text-slate-400 hover:text-indigo-600 transition-colors">
               <Settings size={20} />
             </button>
-            <div className="w-8 h-8 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-xs">
-              JS
-            </div>
+            {user?.photoURL ? (
+              <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full border border-slate-200" referrerPolicy="no-referrer" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-xs">
+                {user?.displayName?.charAt(0) || 'P'}
+              </div>
+            )}
           </div>
         </header>
         <div className="p-4 lg:p-8">

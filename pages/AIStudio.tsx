@@ -12,8 +12,14 @@ import html2canvas from 'html2canvas';
 import html2pdf from 'html2pdf.js';
 import SuperScanner from '../components/SuperScanner';
 import ExamView from '../components/ExamView';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const AIStudio: React.FC = () => {
+  const { profile, user } = useAuth();
+  const navigate = useNavigate();
   const [subject, setSubject] = useState('Matemática');
   const [topic, setTopic] = useState('');
   const [board, setBoard] = useState('ENEM');
@@ -29,6 +35,12 @@ const AIStudio: React.FC = () => {
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!topic) return;
+
+    if (profile?.subscriptionStatus === 'free' && profile.freeCredits <= 0) {
+      navigate('/pricing');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setShowExam(false);
@@ -44,6 +56,15 @@ const AIStudio: React.FC = () => {
           difficulty,
           questions: result
         });
+        
+        // Decrement credits if free user
+        if (profile?.subscriptionStatus === 'free' && user) {
+          const userRef = doc(db, 'users', user.uid);
+          await updateDoc(userRef, {
+            freeCredits: profile.freeCredits - 1
+          });
+        }
+
         setShowExam(true);
       } else {
         throw new Error("Nenhuma questão foi gerada. Tente mudar o tópico ou a banca.");
@@ -235,8 +256,8 @@ const AIStudio: React.FC = () => {
 
               <button 
                 type="submit"
-                disabled={loading}
-                className={`w-full flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-5 rounded-2xl transition-all shadow-xl shadow-indigo-100 active:scale-[0.98] ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                disabled={loading || (profile?.subscriptionStatus === 'free' && profile.freeCredits <= 0)}
+                className={`w-full flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-5 rounded-2xl transition-all shadow-xl shadow-indigo-100 active:scale-[0.98] ${(loading || (profile?.subscriptionStatus === 'free' && profile.freeCredits <= 0)) ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
                 {loading ? (
                   <>
@@ -250,6 +271,12 @@ const AIStudio: React.FC = () => {
                   </>
                 )}
               </button>
+              
+              {profile?.subscriptionStatus === 'free' && (
+                <p className="text-center text-sm text-slate-500 mt-4">
+                  Você tem <span className="font-bold text-indigo-600">{profile.freeCredits}</span> {profile.freeCredits === 1 ? 'prova gratuita restante' : 'provas gratuitas restantes'}.
+                </p>
+              )}
             </form>
 
             {error && (

@@ -1,0 +1,43 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the EduQuest Pro application.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user's unique identifier." },
+        "email": { "type": "string", "format": "email", "description": "The user's email address." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "photoURL": { "type": "string", "format": "uri", "description": "The user's profile picture URL." },
+        "freeCredits": { "type": "number", "description": "Number of free generations remaining." },
+        "subscriptionStatus": { "type": "string", "enum": ["free", "monthly", "quarterly", "semiannual", "annual"], "description": "The user's subscription plan." },
+        "role": { "type": "string", "enum": ["user", "admin"], "description": "The user's role." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the user account was created." }
+      },
+      "required": ["uid", "email", "freeCredits", "subscriptionStatus", "role", "createdAt"]
+    },
+    "Exam": {
+      "title": "Exam",
+      "description": "A generated exam or correction.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the exam." },
+        "authorUid": { "type": "string", "description": "The UID of the user who created the exam." },
+        "title": { "type": "string", "description": "Title of the exam." },
+        "content": { "type": "string", "description": "JSON stringified content of the exam." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the exam was created." }
+      },
+      "required": ["id", "authorUid", "title", "content", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user profiles, credits, and subscription status."
+    },
+    "/exams/{examId}": {
+      "schema": { "$ref": "#/entities/Exam" },
+      "description": "Stores generated exams and corrections."
+    }
+  }
+}

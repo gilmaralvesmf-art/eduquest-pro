@@ -30,7 +30,7 @@ const Landing: React.FC = () => {
         <div className="hidden md:flex items-center gap-10">
           <a href="#recursos" className="text-sm font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest transition-colors">Recursos</a>
           <a href="#banco" className="text-sm font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest transition-colors">Banco</a>
-          <Link to="/dashboard" className="px-8 py-3.5 bg-slate-900 text-white rounded-2xl text-sm font-black hover:bg-black transition-all shadow-xl">
+          <Link to="/login" className="px-8 py-3.5 bg-slate-900 text-white rounded-2xl text-sm font-black hover:bg-black transition-all shadow-xl">
             Entrar no Portal
           </Link>
         </div>
@@ -78,7 +78,7 @@ const Landing: React.FC = () => {
             transition={{ delay: 0.3 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-6"
           >
-            <Link to="/dashboard" className="w-full sm:w-auto px-12 py-6 bg-indigo-600 text-white rounded-[2rem] font-black text-xl hover:bg-indigo-700 transition-all shadow-2xl shadow-indigo-200 flex items-center justify-center gap-3 group">
+            <Link to="/login" className="w-full sm:w-auto px-12 py-6 bg-indigo-600 text-white rounded-[2rem] font-black text-xl hover:bg-indigo-700 transition-all shadow-2xl shadow-indigo-200 flex items-center justify-center gap-3 group">
               Começar Agora
               <ArrowRight className="group-hover:translate-x-2 transition-transform" size={24} />
             </Link>
