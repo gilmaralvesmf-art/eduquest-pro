@@ -30,8 +30,11 @@ const Landing: React.FC = () => {
         <div className="hidden md:flex items-center gap-10">
           <a href="#recursos" className="text-sm font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest transition-colors">Recursos</a>
           <a href="#banco" className="text-sm font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest transition-colors">Banco</a>
-          <Link to="/login" className="px-8 py-3.5 bg-slate-900 text-white rounded-2xl text-sm font-black hover:bg-black transition-all shadow-xl">
-            Entrar no Portal
+          <Link to="/login" className="text-sm font-black text-slate-600 hover:text-indigo-600 uppercase tracking-widest transition-colors">
+            Entrar
+          </Link>
+          <Link to="/login?mode=register" className="px-8 py-3.5 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200">
+            Cadastre-se Grátis
           </Link>
         </div>
       </nav>
@@ -50,7 +53,7 @@ const Landing: React.FC = () => {
             className="inline-flex items-center gap-3 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-full text-[10px] font-black mb-10 border-2 border-indigo-100 uppercase tracking-[0.2em]"
           >
             <Zap size={14} className="fill-indigo-700" />
-            Potencializado por Inteligência Artificial
+            Ganhe 3 provas e correções gratuitas
           </motion.div>
           
           <motion.h1 
@@ -78,13 +81,10 @@ const Landing: React.FC = () => {
             transition={{ delay: 0.3 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-6"
           >
-            <Link to="/login" className="w-full sm:w-auto px-12 py-6 bg-indigo-600 text-white rounded-[2rem] font-black text-xl hover:bg-indigo-700 transition-all shadow-2xl shadow-indigo-200 flex items-center justify-center gap-3 group">
-              Começar Agora
+            <Link to="/login?mode=register" className="w-full sm:w-auto px-12 py-6 bg-indigo-600 text-white rounded-[2rem] font-black text-xl hover:bg-indigo-700 transition-all shadow-2xl shadow-indigo-200 flex items-center justify-center gap-3 group">
+              Cadastre-se grátis (3 provas inclusas)
               <ArrowRight className="group-hover:translate-x-2 transition-transform" size={24} />
             </Link>
-            <button className="w-full sm:w-auto px-12 py-6 bg-white text-slate-900 border-2 border-slate-100 rounded-[2rem] font-black text-xl hover:bg-slate-50 transition-all">
-              Ver Demonstração
-            </button>
           </motion.div>
 
           {/* Mockup Preview */}
@@ -149,6 +149,137 @@ const Landing: React.FC = () => {
               title="Gestão Visual"
               description="Organize suas avaliações em pastas inteligentes e exporte com layout profissional."
             />
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="planos" className="py-40 bg-white">
+        <div className="max-w-7xl mx-auto px-8">
+          <div className="text-center max-w-3xl mx-auto mb-24">
+            <h2 className="text-xs font-black text-indigo-600 uppercase tracking-[0.3em] mb-4">Planos e Assinaturas</h2>
+            <h3 className="text-5xl md:text-6xl font-black text-slate-900 tracking-tighter leading-tight mb-8">
+              Quanto vale o seu <span className="text-indigo-600">final de semana?</span>
+            </h3>
+            <p className="text-xl text-slate-500 font-medium leading-relaxed">
+              Você escolheu ser professor para transformar vidas, não para ser soterrado por pilhas de provas e passar o domingo planejando aulas. Escolha o plano ideal e recupere o seu tempo livre.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* Mensal */}
+            <div className="bg-slate-50 rounded-[3rem] p-10 border-2 border-slate-100 flex flex-col relative">
+              <h4 className="text-2xl font-black text-slate-900 mb-2">Mensal</h4>
+              <p className="text-slate-500 font-medium mb-8">Para experimentar a liberdade.</p>
+              <div className="mb-8">
+                <span className="text-5xl font-black text-slate-900 tracking-tighter">R$39</span>
+                <span className="text-slate-500 font-bold">,90/mês</span>
+              </div>
+              <ul className="space-y-4 mb-10 flex-1">
+                <li className="flex items-start gap-3 text-slate-600 font-medium">
+                  <CheckCircle2 className="text-indigo-600 shrink-0 mt-0.5" size={20} />
+                  <span>Provas e questões ilimitadas</span>
+                </li>
+                <li className="flex items-start gap-3 text-slate-600 font-medium">
+                  <CheckCircle2 className="text-indigo-600 shrink-0 mt-0.5" size={20} />
+                  <span>Correção automática com IA</span>
+                </li>
+                <li className="flex items-start gap-3 text-slate-600 font-medium">
+                  <CheckCircle2 className="text-indigo-600 shrink-0 mt-0.5" size={20} />
+                  <span>Alinhamento total à BNCC</span>
+                </li>
+              </ul>
+              <Link to="/login?mode=register" className="w-full py-4 bg-white text-indigo-600 border-2 border-indigo-100 rounded-2xl font-black text-center hover:bg-indigo-50 transition-all">
+                Assinar Mensal
+              </Link>
+            </div>
+
+            {/* Trimestral */}
+            <div className="bg-indigo-600 rounded-[3rem] p-10 border-2 border-indigo-500 flex flex-col relative transform md:-translate-y-4 shadow-2xl shadow-indigo-200">
+              <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-black uppercase tracking-widest py-2 px-6 rounded-full shadow-lg">
+                Mais Popular
+              </div>
+              <h4 className="text-2xl font-black text-white mb-2">Trimestral</h4>
+              <p className="text-indigo-200 font-medium mb-8">O equilíbrio perfeito.</p>
+              <div className="mb-8">
+                <span className="text-5xl font-black text-white tracking-tighter">R$29</span>
+                <span className="text-indigo-200 font-bold">,90/mês</span>
+              </div>
+              <ul className="space-y-4 mb-10 flex-1">
+                <li className="flex items-start gap-3 text-white font-medium">
+                  <CheckCircle2 className="text-indigo-300 shrink-0 mt-0.5" size={20} />
+                  <span>Tudo do plano Mensal</span>
+                </li>
+                <li className="flex items-start gap-3 text-white font-medium">
+                  <CheckCircle2 className="text-indigo-300 shrink-0 mt-0.5" size={20} />
+                  <span>Banco de questões premium</span>
+                </li>
+                <li className="flex items-start gap-3 text-white font-medium">
+                  <CheckCircle2 className="text-indigo-300 shrink-0 mt-0.5" size={20} />
+                  <span>Exportação em PDF e Word</span>
+                </li>
+              </ul>
+              <Link to="/login?mode=register" className="w-full py-4 bg-white text-indigo-600 rounded-2xl font-black text-center hover:bg-indigo-50 transition-all shadow-xl">
+                Assinar Trimestral
+              </Link>
+            </div>
+
+            {/* Semestral */}
+            <div className="bg-slate-50 rounded-[3rem] p-10 border-2 border-slate-100 flex flex-col relative">
+              <h4 className="text-2xl font-black text-slate-900 mb-2">Semestral</h4>
+              <p className="text-slate-500 font-medium mb-8">Foco no semestre letivo.</p>
+              <div className="mb-8">
+                <span className="text-5xl font-black text-slate-900 tracking-tighter">R$24</span>
+                <span className="text-slate-500 font-bold">,90/mês</span>
+              </div>
+              <ul className="space-y-4 mb-10 flex-1">
+                <li className="flex items-start gap-3 text-slate-600 font-medium">
+                  <CheckCircle2 className="text-indigo-600 shrink-0 mt-0.5" size={20} />
+                  <span>Tudo do plano Trimestral</span>
+                </li>
+                <li className="flex items-start gap-3 text-slate-600 font-medium">
+                  <CheckCircle2 className="text-indigo-600 shrink-0 mt-0.5" size={20} />
+                  <span>Análise de desempenho da turma</span>
+                </li>
+                <li className="flex items-start gap-3 text-slate-600 font-medium">
+                  <CheckCircle2 className="text-indigo-600 shrink-0 mt-0.5" size={20} />
+                  <span>Suporte prioritário</span>
+                </li>
+              </ul>
+              <Link to="/login?mode=register" className="w-full py-4 bg-white text-indigo-600 border-2 border-indigo-100 rounded-2xl font-black text-center hover:bg-indigo-50 transition-all">
+                Assinar Semestral
+              </Link>
+            </div>
+
+            {/* Anual */}
+            <div className="bg-slate-900 rounded-[3rem] p-10 border-2 border-slate-800 flex flex-col relative">
+              <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-xs font-black uppercase tracking-widest py-2 px-6 rounded-full shadow-lg">
+                Melhor Custo-Benefício
+              </div>
+              <h4 className="text-2xl font-black text-white mb-2">Anual</h4>
+              <p className="text-slate-400 font-medium mb-8">Paz de espírito o ano todo.</p>
+              <div className="mb-8">
+                <span className="text-5xl font-black text-white tracking-tighter">R$19</span>
+                <span className="text-slate-400 font-bold">,90/mês</span>
+              </div>
+              <ul className="space-y-4 mb-10 flex-1">
+                <li className="flex items-start gap-3 text-slate-300 font-medium">
+                  <CheckCircle2 className="text-emerald-500 shrink-0 mt-0.5" size={20} />
+                  <span>Tudo do plano Semestral</span>
+                </li>
+                <li className="flex items-start gap-3 text-slate-300 font-medium">
+                  <CheckCircle2 className="text-emerald-500 shrink-0 mt-0.5" size={20} />
+                  <span>Acesso antecipado a novos recursos</span>
+                </li>
+                <li className="flex items-start gap-3 text-slate-300 font-medium">
+                  <CheckCircle2 className="text-emerald-500 shrink-0 mt-0.5" size={20} />
+                  <span>Treinamento exclusivo ao vivo</span>
+                </li>
+              </ul>
+              <Link to="/login?mode=register" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-center hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-900/50">
+                Assinar Anual
+              </Link>
+            </div>
           </div>
         </div>
       </section>

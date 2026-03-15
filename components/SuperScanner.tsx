@@ -32,8 +32,28 @@ const SuperScanner: React.FC<SuperScannerProps> = ({ onClose }) => {
       return;
     }
 
+    // Otimização da imagem (Lazy loading / Resize) para melhorar a performance
+    const optimizedImage = await new Promise<string>((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800; // Reduz a resolução para processamento mais rápido
+        const scale = Math.min(MAX_WIDTH / img.width, 1);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', 0.6)); // Compressão JPEG
+        } else {
+          resolve(imageSrc);
+        }
+      };
+      img.src = imageSrc;
+    });
+
     try {
-      const gradingResult = await autoGradeWithKey(imageSrc, answerKey);
+      const gradingResult = await autoGradeWithKey(optimizedImage, answerKey);
       setExamData({ data: answerKey, title, topic });
       setResult(gradingResult);
       

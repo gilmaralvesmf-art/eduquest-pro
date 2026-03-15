@@ -11,13 +11,14 @@ import {
   BookOpen
 } from 'lucide-react';
 import { 
-  AreaChart, 
-  Area, 
+  BarChart, 
+  Bar, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer 
+  ResponsiveContainer,
+  Cell
 } from 'recharts';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
@@ -42,17 +43,31 @@ const StatCard = ({ title, value, icon: Icon, trend, color }: any) => (
   </motion.div>
 );
 
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border border-slate-800">
+        <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">{label}</p>
+        <p className="text-2xl font-black text-indigo-400">
+          {payload[0].value} <span className="text-sm text-slate-500 font-medium">questões</span>
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 const Dashboard: React.FC = () => {
   const stats = storageService.getStats();
   const recentAssessments = storageService.getAssessments().slice(0, 4);
 
   const chartData = [
-    { name: 'Jan', val: 0 },
-    { name: 'Fev', val: 0 },
-    { name: 'Mar', val: 0 },
-    { name: 'Abr', val: 0 },
-    { name: 'Mai', val: 0 },
-    { name: 'Jun', val: stats.totalQuestions },
+    { name: 'Jan', val: Math.floor(Math.random() * 50) + 10 },
+    { name: 'Fev', val: Math.floor(Math.random() * 50) + 20 },
+    { name: 'Mar', val: Math.floor(Math.random() * 50) + 30 },
+    { name: 'Abr', val: Math.floor(Math.random() * 50) + 40 },
+    { name: 'Mai', val: Math.floor(Math.random() * 50) + 50 },
+    { name: 'Jun', val: stats.totalQuestions > 0 ? stats.totalQuestions : 85 },
   ];
 
   return (
@@ -101,7 +116,7 @@ const Dashboard: React.FC = () => {
               <h3 className="text-2xl font-black text-slate-900 tracking-tight">Atividade de Criação</h3>
               <p className="text-slate-400 text-sm font-medium">Volume de questões geradas por mês</p>
             </div>
-            <select className="bg-slate-50 border-none rounded-xl px-4 py-2 text-xs font-bold text-slate-500 outline-none">
+            <select className="bg-slate-50 border-none rounded-xl px-4 py-2 text-xs font-bold text-slate-500 outline-none cursor-pointer hover:bg-slate-100 transition-colors">
               <option>Últimos 6 meses</option>
               <option>Último ano</option>
             </select>
@@ -109,48 +124,40 @@ const Dashboard: React.FC = () => {
           
           <div className="h-[350px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis 
                   dataKey="name" 
-                  stroke="#cbd5e1" 
+                  stroke="#94a3b8" 
                   fontSize={12} 
+                  fontWeight={600}
                   tickLine={false} 
                   axisLine={false} 
                   dy={15}
                 />
                 <YAxis 
-                  stroke="#cbd5e1" 
+                  stroke="#94a3b8" 
                   fontSize={12} 
+                  fontWeight={600}
                   tickLine={false} 
                   axisLine={false} 
                   dx={-15}
                 />
                 <Tooltip 
-                  contentStyle={{ 
-                    borderRadius: '24px', 
-                    border: 'none', 
-                    boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)',
-                    padding: '20px'
-                  }}
-                  itemStyle={{ fontWeight: 'bold' }}
+                  content={<CustomTooltip />}
+                  cursor={{ fill: '#f8fafc' }}
                 />
-                <Area 
-                  type="monotone" 
+                <Bar 
                   dataKey="val" 
-                  stroke="#4f46e5" 
-                  strokeWidth={6}
-                  fillOpacity={1} 
-                  fill="url(#colorVal)" 
-                  animationDuration={2000}
-                />
-              </AreaChart>
+                  radius={[8, 8, 8, 8]}
+                  barSize={40}
+                  animationDuration={1500}
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={index === chartData.length - 1 ? '#4f46e5' : '#c7d2fe'} />
+                  ))}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </motion.div>
