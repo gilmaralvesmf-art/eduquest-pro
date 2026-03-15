@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { BrainCircuit, Sparkles, Send, Loader2, CheckCircle2, Clipboard, FileText, QrCode, Download, Printer, Camera, AlertCircle, ChevronRight, History, Trash2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import ReactMarkdown from 'react-markdown';
+import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import remarkGfm from 'remark-gfm';
 import { generateQuestions } from '../services/geminiService';
 import { storageService } from '../services/storageService';
@@ -314,7 +314,7 @@ const AIStudio: React.FC = () => {
                       </div>
 
                       <div className="prose prose-slate max-w-none mb-8">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{q.text}</ReactMarkdown>
+                        <MarkdownRenderer content={q.text} />
                       </div>
                       
                       {q.visualType && q.visualType !== 'none' && q.visualContent && (
@@ -327,7 +327,7 @@ const AIStudio: React.FC = () => {
                             </span>
                           </div>
                           <div className="prose prose-sm prose-slate max-w-none overflow-x-auto">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{q.visualContent}</ReactMarkdown>
+                            <MarkdownRenderer content={q.visualContent} />
                           </div>
                         </div>
                       )}
@@ -340,7 +340,7 @@ const AIStudio: React.FC = () => {
                               <span className="text-xs font-black uppercase tracking-widest text-emerald-600">Padrão de Resposta Esperado</span>
                             </div>
                             <div className="text-base font-medium prose prose-sm prose-slate max-w-none">
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>{q.correctAnswer}</ReactMarkdown>
+                              <MarkdownRenderer content={q.correctAnswer} />
                             </div>
                           </div>
                         </div>
@@ -357,7 +357,7 @@ const AIStudio: React.FC = () => {
                                   {String.fromCharCode(65 + oIdx)}
                                 </div>
                                 <div className="text-base font-medium flex-1 prose prose-sm prose-slate max-w-none">
-                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{opt}</ReactMarkdown>
+                                  <MarkdownRenderer content={opt} />
                                 </div>
                                 {isCorrect && <CheckCircle2 size={20} className="text-emerald-500" />}
                               </div>

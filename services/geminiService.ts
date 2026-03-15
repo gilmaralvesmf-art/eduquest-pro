@@ -8,7 +8,7 @@ const getApiKey = async (): Promise<string> => {
   if (cachedApiKey) return cachedApiKey;
   
   // Try environment first (for dev/build injection if any)
-  const envKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+  const envKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
   if (envKey && envKey !== "undefined" && envKey !== "") {
     cachedApiKey = envKey;
     return envKey;
@@ -56,8 +56,8 @@ export const generateQuestions = async (
     ${formatPrompt}
     - Comentário: Forneça uma explicação detalhada.
     - Qualidade: Siga o padrão rigoroso das bancas solicitadas.
-    - Elementos Visuais: Se o assunto permitir, inclua tabelas (em formato Markdown), ou descrições detalhadas de gráficos, infográficos ou charges que complementem a questão.
-    - Formatação Matemática: Use obrigatoriamente caracteres Unicode para sobreescrito (ex: x², y³) e subscrito (ex: H₂O). NUNCA use o acento circunflexo (^) para potências. Para fórmulas complexas, use notação clara.
+    - Elementos Visuais e Gráficos: Se o assunto permitir, inclua tabelas em Markdown. Para gráficos, fluxogramas, diagramas de blocos ou estruturas, use blocos de código \`\`\`mermaid. Para estruturas químicas orgânicas complexas, você PODE usar código SVG limpo e responsivo diretamente no Markdown.
+    - Formatação Matemática e Química: Use OBRIGATORIAMENTE LaTeX para fórmulas matemáticas e químicas. Use \`$$\` para blocos e \`$\` para inline. Para compostos químicos (inclusive orgânicos simples e reações), use o pacote mhchem do KaTeX através do comando \`\\ce{}\` (exemplo: \`$\\ce{H2O}$\`, \`$$\\ce{CH3-CH2-OH}$$\`, \`$\\ce{SO4^2-}$\`). NUNCA use caracteres unicode puros para fórmulas complexas, use SEMPRE LaTeX.
     
     Retorne APENAS o JSON seguindo o esquema fornecido, sem textos explicativos antes ou depois.`,
     config: {

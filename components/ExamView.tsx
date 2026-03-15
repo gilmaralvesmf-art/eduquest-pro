@@ -1,8 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Download, Loader2, ArrowLeft, Printer } from 'lucide-react';
 import { motion } from 'motion/react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { MarkdownRenderer } from './MarkdownRenderer';
 import { Question } from '../types';
 import { QRCodeSVG } from 'qrcode.react';
 import html2pdf from 'html2pdf.js';
@@ -35,12 +34,12 @@ const GabaritoComentado: React.FC<{ questions: Question[] }> = ({ questions }) =
             {q.questionType === 'open' && (
               <div className="prose prose-sm prose-slate max-w-none mb-4">
                 <span className="font-black not-italic text-emerald-600 mr-2 uppercase tracking-widest text-xs">Padrão de Resposta:</span>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{q.correctAnswer}</ReactMarkdown>
+                <MarkdownRenderer content={q.correctAnswer} />
               </div>
             )}
             <div className="prose prose-sm prose-slate max-w-none italic">
               <span className="font-black not-italic text-indigo-600 mr-2">Comentário:</span>
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{q.commentary || "Sem comentário disponível."}</ReactMarkdown>
+              <MarkdownRenderer content={q.commentary || "Sem comentário disponível."} />
             </div>
           </div>
         ))}
@@ -217,13 +216,13 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
                 </span>
                 <div className="flex-1">
                   <div className="prose prose-slate max-w-none mb-4 print:text-black">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{q.text}</ReactMarkdown>
+                    <MarkdownRenderer content={q.text} />
                   </div>
 
                   {q.visualType && q.visualType !== 'none' && q.visualContent && (
                     <div className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-xl print:bg-white print:border-slate-900">
                       <div className="prose prose-sm prose-slate max-w-none overflow-x-auto print:text-black">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{q.visualContent}</ReactMarkdown>
+                        <MarkdownRenderer content={q.visualContent} />
                       </div>
                     </div>
                   )}
@@ -244,7 +243,7 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
                         <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl print:bg-white print:border-slate-900">
                           <p className="text-xs font-black text-emerald-600 uppercase tracking-widest mb-2">Padrão de Resposta Esperado:</p>
                           <div className="prose prose-sm prose-slate max-w-none print:text-black">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{q.correctAnswer}</ReactMarkdown>
+                            <MarkdownRenderer content={q.correctAnswer} />
                           </div>
                         </div>
                       )}
@@ -259,7 +258,7 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
                               {String.fromCharCode(65 + oIdx)}
                             </div>
                             <div className={`text-base leading-snug print:text-black prose prose-sm prose-slate max-w-none ${isTeacherMode && isCorrect ? 'text-emerald-700 font-bold' : 'text-slate-700'}`}>
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>{opt}</ReactMarkdown>
+                              <MarkdownRenderer content={opt} />
                             </div>
                           </div>
                         );
@@ -270,7 +269,7 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
                     <div className="mt-4 p-4 bg-indigo-50 border-l-4 border-indigo-500 rounded-r-xl">
                       <p className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-1">Comentário do Professor:</p>
                       <div className="prose prose-sm prose-slate max-w-none">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{q.commentary}</ReactMarkdown>
+                        <MarkdownRenderer content={q.commentary} />
                       </div>
                     </div>
                   )}
