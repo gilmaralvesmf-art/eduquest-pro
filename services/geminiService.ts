@@ -8,7 +8,7 @@ const getApiKey = async (): Promise<string> => {
   if (cachedApiKey) return cachedApiKey;
   
   // Try environment first (for dev/build injection if any)
-  const envKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (process as any).env?.GEMINI_API_KEY;
+  const envKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
   if (envKey && envKey !== "undefined" && envKey !== "") {
     cachedApiKey = envKey;
     return envKey;
