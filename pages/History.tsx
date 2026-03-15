@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { History as HistoryIcon, Trash2, Award, Calendar, BookOpen, CheckCircle2, XCircle, Search, Filter } from 'lucide-react';
+import { History as HistoryIcon, Trash2, Award, Calendar, BookOpen, CheckCircle2, XCircle, Search, Filter, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { storageService, ScanResult } from '../services/storageService';
 

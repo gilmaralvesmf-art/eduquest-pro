@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
 export interface UserProfile {
@@ -12,6 +12,12 @@ export interface UserProfile {
   subscriptionStatus: 'free' | 'monthly' | 'quarterly' | 'semiannual' | 'annual';
   role: 'user' | 'admin';
   createdAt: string;
+  planExpiresAt?: string;
+  usage: {
+    assessmentsGenerated: number;
+    correctionsMade: number;
+    lastResetDate: string;
+  };
 }
 
 interface AuthContextType {
@@ -37,18 +43,80 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Listen to profile changes
         const unsubProfile = onSnapshot(userRef, async (docSnap) => {
           if (docSnap.exists()) {
-            setProfile(docSnap.data() as UserProfile);
+            const data = docSnap.data() as UserProfile;
+            
+            // Auto-upgrade creator to admin
+            if (currentUser.email === 'gilmaralvesmf@gmail.com' && data.role !== 'admin') {
+              try {
+                await updateDoc(userRef, {
+                  role: 'admin',
+                  subscriptionStatus: 'annual',
+                  freeCredits: 999999
+                });
+                return; // The snapshot listener will trigger again
+              } catch (error) {
+                console.error("Error upgrading creator to admin:", error);
+              }
+            }
+
+            // Check if usage needs to be reset (e.g., 30 days passed since lastResetDate)
+            if (data.subscriptionStatus !== 'free' && data.usage?.lastResetDate) {
+              const lastReset = new Date(data.usage.lastResetDate);
+              const now = new Date();
+              const diffTime = Math.abs(now.getTime() - lastReset.getTime());
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+              
+              if (diffDays >= 30) {
+                // Reset usage
+                try {
+                  await updateDoc(userRef, {
+                    'usage.assessmentsGenerated': 0,
+                    'usage.correctionsMade': 0,
+                    'usage.lastResetDate': now.toISOString()
+                  });
+                  // The snapshot listener will trigger again with the updated data
+                  return; 
+                } catch (error) {
+                  console.error("Error resetting usage:", error);
+                }
+              }
+            }
+            
+            // Check if plan expired
+            if (data.subscriptionStatus !== 'free' && data.planExpiresAt) {
+              const expiresAt = new Date(data.planExpiresAt);
+              const now = new Date();
+              if (now > expiresAt) {
+                try {
+                  await updateDoc(userRef, {
+                    subscriptionStatus: 'free',
+                    planExpiresAt: null
+                  });
+                  return;
+                } catch (error) {
+                  console.error("Error expiring plan:", error);
+                }
+              }
+            }
+
+            setProfile(data);
           } else {
-            // Create new user profile with 3 free credits
+            // Create new user profile
+            const isAdmin = currentUser.email === 'gilmaralvesmf@gmail.com';
             const newProfile: UserProfile = {
               uid: currentUser.uid,
               email: currentUser.email || '',
               displayName: currentUser.displayName || '',
               photoURL: currentUser.photoURL || '',
-              freeCredits: 3,
-              subscriptionStatus: 'free',
-              role: 'user',
+              freeCredits: isAdmin ? 999999 : 3,
+              subscriptionStatus: isAdmin ? 'annual' : 'free',
+              role: isAdmin ? 'admin' : 'user',
               createdAt: new Date().toISOString(),
+              usage: {
+                assessmentsGenerated: 0,
+                correctionsMade: 0,
+                lastResetDate: new Date().toISOString(),
+              }
             };
             await setDoc(userRef, newProfile);
             setProfile(newProfile);

@@ -4,12 +4,18 @@ import jsQR from 'jsqr';
 import { Camera, Loader2, X, CheckCircle2, Award, RotateCcw, AlertCircle } from 'lucide-react';
 import { autoGradeWithKey } from '../services/geminiService';
 import { storageService } from '../services/storageService';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 interface SuperScannerProps {
   onClose: () => void;
 }
 
 const SuperScanner: React.FC<SuperScannerProps> = ({ onClose }) => {
+  const { profile, user } = useAuth();
+  const navigate = useNavigate();
   const webcamRef = useRef<Webcam>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [scanning, setScanning] = useState(true);
@@ -20,6 +26,33 @@ const SuperScanner: React.FC<SuperScannerProps> = ({ onClose }) => {
 
   const captureAndGrade = useCallback(async (answerKey: string, title: string, topic: string) => {
     if (!webcamRef.current) return;
+
+    // Verificar limites de uso
+    if (profile) {
+      const { subscriptionStatus, freeCredits, usage } = profile;
+      
+      if (subscriptionStatus === 'free' && freeCredits <= 0) {
+        navigate('/pricing');
+        return;
+      }
+
+      const limits = {
+        monthly: 150,
+        quarterly: 300,
+        semiannual: 500,
+        annual: 800
+      };
+
+      if (subscriptionStatus !== 'free' && profile.role !== 'admin') {
+        const limit = limits[subscriptionStatus as keyof typeof limits] || 0;
+        if (usage?.correctionsMade >= limit) {
+           setError(`Você atingiu o limite de ${limit} correções do seu plano ${subscriptionStatus}.`);
+           setScanning(false);
+           return;
+        }
+      }
+    }
+
     setLoading(true);
     setError(null);
     setScanning(false);
@@ -65,6 +98,21 @@ const SuperScanner: React.FC<SuperScannerProps> = ({ onClose }) => {
         totalQuestions: gradingResult.studentAnswers.length,
         studentAnswers: gradingResult.studentAnswers
       });
+
+      // Decrement credits if free user or increment usage if paid
+      if (user && profile) {
+        const userRef = doc(db, 'users', user.uid);
+        if (profile.subscriptionStatus === 'free') {
+          await updateDoc(userRef, {
+            freeCredits: profile.freeCredits - 1
+          });
+        } else if (profile.role !== 'admin') {
+           await updateDoc(userRef, {
+            'usage.correctionsMade': (profile.usage?.correctionsMade || 0) + 1
+          });
+        }
+      }
+
     } catch (err: any) {
       console.error(err);
       setError("Erro ao processar correção. Tente novamente.");

@@ -15,8 +15,11 @@ import {
   Globe
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useAuth } from '../contexts/AuthContext';
 
 const Landing: React.FC = () => {
+  const { profile } = useAuth();
+
   return (
     <div className="min-h-screen bg-white selection:bg-indigo-100 selection:text-indigo-900">
       {/* Navigation */}
@@ -178,20 +181,20 @@ const Landing: React.FC = () => {
               <ul className="space-y-4 mb-10 flex-1">
                 <li className="flex items-start gap-3 text-slate-600 font-medium">
                   <CheckCircle2 className="text-indigo-600 shrink-0 mt-0.5" size={20} />
-                  <span>Provas e questões ilimitadas</span>
+                  <span>Até 15 avaliações geradas por mês</span>
                 </li>
                 <li className="flex items-start gap-3 text-slate-600 font-medium">
                   <CheckCircle2 className="text-indigo-600 shrink-0 mt-0.5" size={20} />
-                  <span>Correção automática com IA</span>
+                  <span>Até 150 correções automáticas com IA</span>
                 </li>
                 <li className="flex items-start gap-3 text-slate-600 font-medium">
                   <CheckCircle2 className="text-indigo-600 shrink-0 mt-0.5" size={20} />
                   <span>Alinhamento total à BNCC</span>
                 </li>
               </ul>
-              <Link to="/login?mode=register" className="w-full py-4 bg-white text-indigo-600 border-2 border-indigo-100 rounded-2xl font-black text-center hover:bg-indigo-50 transition-all">
+              <a href={`https://pay.kiwify.com.br/fdFvEXg${profile?.email ? `?email=${encodeURIComponent(profile.email)}` : ''}`} target="_blank" rel="noopener noreferrer" className="w-full py-4 bg-white text-indigo-600 border-2 border-indigo-100 rounded-2xl font-black text-center hover:bg-indigo-50 transition-all">
                 Assinar Mensal
-              </Link>
+              </a>
             </div>
 
             {/* Trimestral */}
@@ -208,20 +211,20 @@ const Landing: React.FC = () => {
               <ul className="space-y-4 mb-10 flex-1">
                 <li className="flex items-start gap-3 text-white font-medium">
                   <CheckCircle2 className="text-indigo-300 shrink-0 mt-0.5" size={20} />
-                  <span>Tudo do plano Mensal</span>
+                  <span>Até 25 avaliações geradas por mês</span>
                 </li>
                 <li className="flex items-start gap-3 text-white font-medium">
                   <CheckCircle2 className="text-indigo-300 shrink-0 mt-0.5" size={20} />
-                  <span>Banco de questões premium</span>
+                  <span>Até 300 correções automáticas com IA</span>
                 </li>
                 <li className="flex items-start gap-3 text-white font-medium">
                   <CheckCircle2 className="text-indigo-300 shrink-0 mt-0.5" size={20} />
-                  <span>Exportação em PDF e Word</span>
+                  <span>Banco de questões premium e Exportação PDF/Word</span>
                 </li>
               </ul>
-              <Link to="/login?mode=register" className="w-full py-4 bg-white text-indigo-600 rounded-2xl font-black text-center hover:bg-indigo-50 transition-all shadow-xl">
+              <a href={`https://pay.kiwify.com.br/Lvgz53F${profile?.email ? `?email=${encodeURIComponent(profile.email)}` : ''}`} target="_blank" rel="noopener noreferrer" className="w-full py-4 bg-white text-indigo-600 rounded-2xl font-black text-center hover:bg-indigo-50 transition-all shadow-xl">
                 Assinar Trimestral
-              </Link>
+              </a>
             </div>
 
             {/* Semestral */}
@@ -235,20 +238,20 @@ const Landing: React.FC = () => {
               <ul className="space-y-4 mb-10 flex-1">
                 <li className="flex items-start gap-3 text-slate-600 font-medium">
                   <CheckCircle2 className="text-indigo-600 shrink-0 mt-0.5" size={20} />
-                  <span>Tudo do plano Trimestral</span>
+                  <span>Até 40 avaliações geradas por mês</span>
                 </li>
                 <li className="flex items-start gap-3 text-slate-600 font-medium">
                   <CheckCircle2 className="text-indigo-600 shrink-0 mt-0.5" size={20} />
-                  <span>Análise de desempenho da turma</span>
+                  <span>Até 500 correções automáticas com IA</span>
                 </li>
                 <li className="flex items-start gap-3 text-slate-600 font-medium">
                   <CheckCircle2 className="text-indigo-600 shrink-0 mt-0.5" size={20} />
-                  <span>Suporte prioritário</span>
+                  <span>Análise de desempenho da turma e Suporte prioritário</span>
                 </li>
               </ul>
-              <Link to="/login?mode=register" className="w-full py-4 bg-white text-indigo-600 border-2 border-indigo-100 rounded-2xl font-black text-center hover:bg-indigo-50 transition-all">
+              <a href={`https://pay.kiwify.com.br/eQCOOE0${profile?.email ? `?email=${encodeURIComponent(profile.email)}` : ''}`} target="_blank" rel="noopener noreferrer" className="w-full py-4 bg-white text-indigo-600 border-2 border-indigo-100 rounded-2xl font-black text-center hover:bg-indigo-50 transition-all">
                 Assinar Semestral
-              </Link>
+              </a>
             </div>
 
             {/* Anual */}
@@ -265,20 +268,20 @@ const Landing: React.FC = () => {
               <ul className="space-y-4 mb-10 flex-1">
                 <li className="flex items-start gap-3 text-slate-300 font-medium">
                   <CheckCircle2 className="text-emerald-500 shrink-0 mt-0.5" size={20} />
-                  <span>Tudo do plano Semestral</span>
+                  <span>Até 60 avaliações geradas por mês</span>
                 </li>
                 <li className="flex items-start gap-3 text-slate-300 font-medium">
                   <CheckCircle2 className="text-emerald-500 shrink-0 mt-0.5" size={20} />
-                  <span>Acesso antecipado a novos recursos</span>
+                  <span>Até 800 correções automáticas com IA</span>
                 </li>
                 <li className="flex items-start gap-3 text-slate-300 font-medium">
                   <CheckCircle2 className="text-emerald-500 shrink-0 mt-0.5" size={20} />
-                  <span>Treinamento exclusivo ao vivo</span>
+                  <span>Acesso antecipado a novos recursos e Treinamento ao vivo</span>
                 </li>
               </ul>
-              <Link to="/login?mode=register" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-center hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-900/50">
+              <a href={`https://pay.kiwify.com.br/iXyou3r${profile?.email ? `?email=${encodeURIComponent(profile.email)}` : ''}`} target="_blank" rel="noopener noreferrer" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-center hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-900/50">
                 Assinar Anual
-              </Link>
+              </a>
             </div>
           </div>
         </div>

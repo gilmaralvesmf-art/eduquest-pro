@@ -36,9 +36,29 @@ const AIStudio: React.FC = () => {
     e.preventDefault();
     if (!topic) return;
 
-    if (profile?.subscriptionStatus === 'free' && profile.freeCredits <= 0) {
-      navigate('/pricing');
-      return;
+    // Verificar limites de uso
+    if (profile) {
+      const { subscriptionStatus, freeCredits, usage } = profile;
+      
+      if (subscriptionStatus === 'free' && freeCredits <= 0) {
+        navigate('/pricing');
+        return;
+      }
+
+      const limits = {
+        monthly: 15,
+        quarterly: 25,
+        semiannual: 40,
+        annual: 60
+      };
+
+      if (subscriptionStatus !== 'free' && profile.role !== 'admin') {
+        const limit = limits[subscriptionStatus as keyof typeof limits] || 0;
+        if (usage?.assessmentsGenerated >= limit) {
+           setError(`Você atingiu o limite de ${limit} avaliações do seu plano ${subscriptionStatus}.`);
+           return;
+        }
+      }
     }
 
     setLoading(true);
@@ -57,12 +77,18 @@ const AIStudio: React.FC = () => {
           questions: result
         });
         
-        // Decrement credits if free user
-        if (profile?.subscriptionStatus === 'free' && user) {
+        // Decrement credits if free user or increment usage if paid
+        if (user && profile) {
           const userRef = doc(db, 'users', user.uid);
-          await updateDoc(userRef, {
-            freeCredits: profile.freeCredits - 1
-          });
+          if (profile.subscriptionStatus === 'free') {
+            await updateDoc(userRef, {
+              freeCredits: profile.freeCredits - 1
+            });
+          } else if (profile.role !== 'admin') {
+             await updateDoc(userRef, {
+              'usage.assessmentsGenerated': (profile.usage?.assessmentsGenerated || 0) + 1
+            });
+          }
         }
 
         setShowExam(true);

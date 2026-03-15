@@ -1,83 +1,84 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Check, Sparkles, Zap, Shield, Crown } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 const plans = [
   {
     name: 'Mensal',
-    description: 'Ideal para testar o poder da IA no seu dia a dia.',
-    price: '29,90',
+    description: 'Para experimentar a liberdade.',
+    price: '39,90',
     period: '/mês',
     icon: <Zap className="text-indigo-500" size={24} />,
     features: [
-      'Geração ilimitada de questões',
-      'Correção automática de provas',
-      'Exportação para PDF e Word',
-      'Suporte prioritário',
-      'Acesso a todas as bancas',
+      'Até 15 avaliações geradas por mês',
+      'Até 150 correções automáticas com IA',
+      'Alinhamento total à BNCC',
     ],
     buttonText: 'Assinar Mensal',
-    link: '#', // Link do Mercado Pago
+    link: 'https://pay.kiwify.com.br/fdFvEXg',
     popular: false,
     color: 'indigo'
   },
   {
     name: 'Trimestral',
-    description: 'Economia e praticidade para o semestre letivo.',
-    price: '24,90',
+    description: 'O equilíbrio perfeito.',
+    price: '29,90',
     period: '/mês',
-    total: 'R$ 74,70 cobrados a cada 3 meses',
+    total: 'R$ 89,70 cobrados a cada 3 meses',
     icon: <Shield className="text-emerald-500" size={24} />,
     features: [
-      'Todas as vantagens do plano Mensal',
-      'Economia de 16%',
-      'Acesso antecipado a novos recursos',
-      'Histórico ilimitado de provas',
+      'Até 25 avaliações geradas por mês',
+      'Até 300 correções automáticas com IA',
+      'Banco de questões premium',
+      'Exportação em PDF e Word',
     ],
     buttonText: 'Assinar Trimestral',
-    link: '#', // Link do Mercado Pago
+    link: 'https://pay.kiwify.com.br/Lvgz53F',
     popular: true,
     color: 'emerald'
   },
   {
     name: 'Semestral',
-    description: 'O plano perfeito para acompanhar todo o semestre.',
-    price: '19,90',
+    description: 'Foco no semestre letivo.',
+    price: '24,90',
     period: '/mês',
-    total: 'R$ 119,40 cobrados a cada 6 meses',
+    total: 'R$ 149,40 cobrados a cada 6 meses',
     icon: <Sparkles className="text-amber-500" size={24} />,
     features: [
-      'Todas as vantagens do plano Trimestral',
-      'Economia de 33%',
-      'Geração de simulados completos',
-      'Personalização com logo da escola',
+      'Até 40 avaliações geradas por mês',
+      'Até 500 correções automáticas com IA',
+      'Análise de desempenho da turma',
+      'Suporte prioritário',
     ],
     buttonText: 'Assinar Semestral',
-    link: '#', // Link do Mercado Pago
+    link: 'https://pay.kiwify.com.br/eQCOOE0',
     popular: false,
     color: 'amber'
   },
   {
     name: 'Anual',
-    description: 'A melhor escolha para o professor profissional.',
-    price: '14,90',
+    description: 'Paz de espírito o ano todo.',
+    price: '19,90',
     period: '/mês',
-    total: 'R$ 178,80 cobrados anualmente',
+    total: 'R$ 238,80 cobrados anualmente',
     icon: <Crown className="text-violet-500" size={24} />,
     features: [
-      'Todas as vantagens do plano Semestral',
-      'Economia de 50%',
-      'Suporte VIP via WhatsApp',
-      'Treinamento exclusivo de IA para educação',
+      'Até 60 avaliações geradas por mês',
+      'Até 800 correções automáticas com IA',
+      'Acesso antecipado a novos recursos',
+      'Treinamento exclusivo ao vivo',
     ],
     buttonText: 'Assinar Anual',
-    link: '#', // Link do Mercado Pago
+    link: 'https://pay.kiwify.com.br/iXyou3r',
     popular: false,
     color: 'violet'
   }
 ];
 
 export const Pricing: React.FC = () => {
+  const { profile } = useAuth();
+
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -148,7 +149,7 @@ export const Pricing: React.FC = () => {
 
               <div className="p-8 pt-0 mt-auto">
                 <a
-                  href={plan.link}
+                  href={`${plan.link}${profile?.email ? `?email=${encodeURIComponent(profile.email)}` : ''}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`w-full flex justify-center items-center py-3 px-4 rounded-xl text-sm font-bold transition-all ${
@@ -160,7 +161,7 @@ export const Pricing: React.FC = () => {
                   {plan.buttonText}
                 </a>
                 <p className="text-center text-xs text-slate-400 mt-3">
-                  Pagamento seguro via Mercado Pago
+                  Pagamento seguro via Kiwify
                 </p>
               </div>
             </motion.div>
@@ -170,3 +171,5 @@ export const Pricing: React.FC = () => {
     </div>
   );
 };
+
+export default Pricing;
