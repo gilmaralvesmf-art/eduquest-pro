@@ -215,6 +215,11 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
                   {idx + 1}
                 </span>
                 <div className="flex-1">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 print:text-slate-500">
+                      {isTeacherMode && `Dificuldade: ${q.difficulty}`}
+                    </span>
+                  </div>
                   <div className="prose prose-slate max-w-none mb-4 print:text-black">
                     <MarkdownRenderer content={q.text} />
                   </div>

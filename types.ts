@@ -2,7 +2,8 @@
 export enum Difficulty {
   EASY = 'Fácil',
   MEDIUM = 'Médio',
-  HARD = 'Difícil'
+  HARD = 'Difícil',
+  MIXED = 'Mesclada'
 }
 
 export interface Question {

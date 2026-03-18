@@ -265,6 +265,7 @@ const AIStudio: React.FC = () => {
                     <option value={Difficulty.EASY}>Fácil</option>
                     <option value={Difficulty.MEDIUM}>Médio</option>
                     <option value={Difficulty.HARD}>Difícil</option>
+                    <option value={Difficulty.MIXED}>Mesclada (Fácil, Médio e Difícil)</option>
                   </select>
                 </div>
                 <div className="space-y-2">

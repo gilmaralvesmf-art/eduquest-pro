@@ -45,13 +45,17 @@ export const generateQuestions = async (
     ? `- Formato: Cada questão deve ter um enunciado claro e 5 alternativas (A, B, C, D, E).\n    - Resposta: Indique a alternativa correta (texto completo da alternativa).`
     : `- Formato: Cada questão deve ter um enunciado claro para uma questão discursiva/aberta.\n    - Resposta: Forneça um padrão de resposta esperado ou espelho de correção detalhado.`;
 
+  const difficultyPrompt = difficulty === Difficulty.MIXED 
+    ? `- Nível de dificuldade: Mesclada (Distribua as questões entre Fácil, Médio e Difícil de forma equilibrada).`
+    : `- Nível de dificuldade: ${difficulty}.`;
+
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: `Você é um especialista em elaboração de questões de concursos e vestibulares de alto nível (como ITA, IME, FUVEST e bancas regionais como UECE, URCA, UPE, UFPE).
     Gere exatamente ${count} questões ${questionType === 'multiple_choice' ? 'de múltipla escolha' : 'discursivas/abertas'} inéditas sobre "${topic}" na disciplina de "${subject}"${boardPrompt}.
     
     Critérios:
-    - Nível de dificuldade: ${difficulty}.
+    ${difficultyPrompt}
     - Idioma: Português do Brasil.
     ${formatPrompt}
     - Comentário: Forneça uma explicação detalhada.
@@ -97,7 +101,11 @@ export const generateQuestions = async (
               type: Type.STRING,
               description: "O tipo de questão gerada ('multiple_choice' ou 'open')"
             },
-            difficulty: { type: Type.STRING },
+            difficulty: { 
+              type: Type.STRING,
+              enum: ["Fácil", "Médio", "Difícil"],
+              description: "A dificuldade específica desta questão"
+            },
             year: { type: Type.NUMBER },
             source: { type: Type.STRING }
           },
