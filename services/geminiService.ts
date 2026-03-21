@@ -35,15 +35,21 @@ export const generateQuestions = async (
   count: number, 
   difficulty: Difficulty,
   board?: string,
-  questionType: 'multiple_choice' | 'open' = 'multiple_choice'
+  questionType: 'multiple_choice' | 'open' | 'mixed' = 'multiple_choice'
 ): Promise<Question[]> => {
   const apiKey = await getApiKey();
   const ai = new GoogleGenAI({ apiKey });
   
   const boardPrompt = board ? ` no estilo da banca ${board}` : "";
-  const formatPrompt = questionType === 'multiple_choice' 
-    ? `- Formato: Cada questão deve ter um enunciado claro e 5 alternativas (A, B, C, D, E).\n    - Resposta: Indique a alternativa correta (texto completo da alternativa).`
-    : `- Formato: Cada questão deve ter um enunciado claro para uma questão discursiva/aberta.\n    - Resposta: Forneça um padrão de resposta esperado ou espelho de correção detalhado.`;
+  
+  let formatPrompt = "";
+  if (questionType === 'multiple_choice') {
+    formatPrompt = `- Formato: Cada questão deve ter um enunciado claro e 5 alternativas (A, B, C, D, E).\n    - Resposta: Indique a alternativa correta (texto completo da alternativa).`;
+  } else if (questionType === 'open') {
+    formatPrompt = `- Formato: Cada questão deve ter um enunciado claro para uma questão discursiva/aberta.\n    - Resposta: Forneça um padrão de resposta esperado ou espelho de correção detalhado.`;
+  } else {
+    formatPrompt = `- Formato: Mescle questões de múltipla escolha (com 5 alternativas) e questões discursivas/abertas.\n    - Resposta: Para múltipla escolha, indique a alternativa correta. Para discursivas, forneça o padrão de resposta.`;
+  }
 
   const difficultyPrompt = difficulty === Difficulty.MIXED 
     ? `- Nível de dificuldade: Mesclada (Distribua as questões entre Fácil, Médio e Difícil de forma equilibrada).`
@@ -52,7 +58,7 @@ export const generateQuestions = async (
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: `Você é um especialista em elaboração de questões de concursos e vestibulares de alto nível (como ITA, IME, FUVEST e bancas regionais como UECE, URCA, UPE, UFPE).
-    Gere exatamente ${count} questões ${questionType === 'multiple_choice' ? 'de múltipla escolha' : 'discursivas/abertas'} inéditas sobre "${topic}" na disciplina de "${subject}"${boardPrompt}.
+    Gere exatamente ${count} questões ${questionType === 'mixed' ? 'mesclando múltipla escolha e discursivas' : (questionType === 'multiple_choice' ? 'de múltipla escolha' : 'discursivas/abertas')} inéditas sobre "${topic}" na disciplina de "${subject}"${boardPrompt}.
     
     Critérios:
     ${difficultyPrompt}
@@ -119,7 +125,12 @@ export const generateQuestions = async (
     const text = response.text;
     if (!text) throw new Error("O modelo não retornou conteúdo.");
     const parsed = JSON.parse(text);
-    return parsed.map((q: any) => ({ ...q, questionType }));
+    return parsed.map((q: any) => {
+      // If questionType is mixed, we trust the AI to set questionType correctly in the JSON
+      // If it's not set or it's a specific type, we ensure it's consistent
+      const qType = q.questionType || (q.options && q.options.length > 0 ? 'multiple_choice' : 'open');
+      return { ...q, questionType: qType };
+    });
   } catch (error: any) {
     console.error("Erro ao processar JSON do Gemini:", error);
     throw new Error(`Falha ao gerar questões: ${error.message}`);

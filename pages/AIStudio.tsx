@@ -25,8 +25,11 @@ const AIStudio: React.FC = () => {
   const [board, setBoard] = useState('ENEM');
   const [difficulty, setDifficulty] = useState<Difficulty>(Difficulty.MEDIUM);
   const [count, setCount] = useState(5);
-  const [questionType, setQuestionType] = useState<'multiple_choice' | 'open'>('multiple_choice');
+  const [questionType, setQuestionType] = useState<'multiple_choice' | 'open' | 'mixed'>('multiple_choice');
   const [loading, setLoading] = useState(false);
+  const [replacingIndex, setReplacingIndex] = useState<number | null>(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editedQuestion, setEditedQuestion] = useState<Question | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [showExam, setShowExam] = useState(false);
@@ -101,6 +104,46 @@ const AIStudio: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleReplaceQuestion = async (index: number) => {
+    setReplacingIndex(index);
+    try {
+      // Generate just one new question
+      // Use the same parameters but count = 1
+      // If questionType is mixed, we'll just get one of either
+      const result = await generateQuestions(subject, topic, 1, difficulty, board, questionType);
+      if (result && result.length > 0) {
+        const newQuestions = [...questions];
+        newQuestions[index] = result[0];
+        setQuestions(newQuestions);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError("Falha ao substituir a questão. Tente novamente.");
+    } finally {
+      setReplacingIndex(null);
+    }
+  };
+
+  const handleStartEdit = (index: number) => {
+    setEditingIndex(index);
+    setEditedQuestion({ ...questions[index] });
+  };
+
+  const handleSaveEdit = () => {
+    if (editingIndex !== null && editedQuestion) {
+      const newQuestions = [...questions];
+      newQuestions[editingIndex] = editedQuestion;
+      setQuestions(newQuestions);
+      setEditingIndex(null);
+      setEditedQuestion(null);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingIndex(null);
+    setEditedQuestion(null);
   };
 
   if (showExam && questions.length > 0) {
@@ -179,6 +222,13 @@ const AIStudio: React.FC = () => {
                 className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${questionType === 'open' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Discursiva
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuestionType('mixed')}
+                className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${questionType === 'mixed' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Mesclada
               </button>
             </div>
 
@@ -350,7 +400,7 @@ const AIStudio: React.FC = () => {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.05 }}
-                      className="group bg-white p-8 rounded-[2rem] border-2 border-slate-100 hover:border-indigo-600 transition-all duration-300 shadow-sm hover:shadow-2xl hover:shadow-indigo-50"
+                      className={`group bg-white p-8 rounded-[2rem] border-2 transition-all duration-300 shadow-sm hover:shadow-2xl hover:shadow-indigo-50 ${replacingIndex === idx ? 'opacity-50 pointer-events-none' : 'border-slate-100 hover:border-indigo-600'}`}
                     >
                       <div className="flex justify-between items-start mb-6">
                         <div className="flex items-center gap-3">
@@ -359,65 +409,155 @@ const AIStudio: React.FC = () => {
                           </span>
                           <div className="flex flex-col">
                             <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">{q.difficulty}</span>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{board} • {subject}</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{board} • {subject} • {q.questionType === 'multiple_choice' ? 'Múltipla Escolha' : 'Discursiva'}</span>
                           </div>
                         </div>
-                        <button className="text-slate-300 hover:text-indigo-600 transition-colors">
-                          <Clipboard size={20} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {replacingIndex === idx ? (
+                            <Loader2 className="animate-spin text-indigo-600" size={20} />
+                          ) : (
+                            <>
+                              <button 
+                                onClick={() => handleReplaceQuestion(idx)}
+                                title="Refazer esta questão com IA"
+                                className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                              >
+                                <History size={20} />
+                              </button>
+                              <button 
+                                onClick={() => handleStartEdit(idx)}
+                                title="Editar manualmente"
+                                className="p-2 text-slate-300 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                              >
+                                <Send size={20} className="rotate-90" />
+                              </button>
+                              <button className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all">
+                                <Clipboard size={20} />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="prose prose-slate max-w-none mb-8">
-                        <MarkdownRenderer content={q.text} />
-                      </div>
-                      
-                      {q.visualType && q.visualType !== 'none' && q.visualContent && (
-                        <div className="mb-8 p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-                          <div className="flex items-center gap-2 mb-4">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
-                              {q.visualType === 'table' ? 'Tabela' : 
-                               q.visualType === 'graph' ? 'Gráfico' : 
-                               q.visualType === 'infographic' ? 'Infográfico' : 'Charge'}
-                            </span>
+                      {editingIndex === idx && editedQuestion ? (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Enunciado</label>
+                            <textarea 
+                              value={editedQuestion.text}
+                              onChange={(e) => setEditedQuestion({ ...editedQuestion, text: e.target.value })}
+                              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-medium text-slate-700 focus:border-indigo-600 focus:bg-white outline-none transition-all min-h-[150px]"
+                            />
                           </div>
-                          <div className="prose prose-sm prose-slate max-w-none overflow-x-auto">
-                            <MarkdownRenderer content={q.visualContent} />
-                          </div>
-                        </div>
-                      )}
-                      
-                      {q.questionType === 'open' ? (
-                        <div className="mt-6">
-                          <div className="p-5 rounded-2xl border-2 border-emerald-500 bg-emerald-50 text-emerald-900">
-                            <div className="flex items-center gap-2 mb-2">
-                              <CheckCircle2 size={20} className="text-emerald-500" />
-                              <span className="text-xs font-black uppercase tracking-widest text-emerald-600">Padrão de Resposta Esperado</span>
+                          
+                          {editedQuestion.questionType === 'multiple_choice' && editedQuestion.options && (
+                            <div className="space-y-3">
+                              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Alternativas</label>
+                              {editedQuestion.options.map((opt, oIdx) => (
+                                <div key={oIdx} className="flex items-center gap-2">
+                                  <span className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center font-bold text-xs">{String.fromCharCode(65 + oIdx)}</span>
+                                  <input 
+                                    value={opt}
+                                    onChange={(e) => {
+                                      const newOpts = [...editedQuestion.options!];
+                                      newOpts[oIdx] = e.target.value;
+                                      setEditedQuestion({ ...editedQuestion, options: newOpts });
+                                    }}
+                                    className="flex-1 bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-2 text-sm font-medium text-slate-700 focus:border-indigo-600 focus:bg-white outline-none transition-all"
+                                  />
+                                  <input 
+                                    type="radio"
+                                    name={`correct-${idx}`}
+                                    checked={opt === editedQuestion.correctAnswer}
+                                    onChange={() => setEditedQuestion({ ...editedQuestion, correctAnswer: opt })}
+                                    className="w-4 h-4 text-indigo-600"
+                                  />
+                                </div>
+                              ))}
                             </div>
-                            <div className="text-base font-medium prose prose-sm prose-slate max-w-none">
-                              <MarkdownRenderer content={q.correctAnswer} />
+                          )}
+
+                          {editedQuestion.questionType === 'open' && (
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Padrão de Resposta</label>
+                              <textarea 
+                                value={editedQuestion.correctAnswer}
+                                onChange={(e) => setEditedQuestion({ ...editedQuestion, correctAnswer: e.target.value })}
+                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-medium text-slate-700 focus:border-indigo-600 focus:bg-white outline-none transition-all min-h-[100px]"
+                              />
                             </div>
+                          )}
+
+                          <div className="flex gap-2 pt-4">
+                            <button 
+                              onClick={handleSaveEdit}
+                              className="bg-indigo-600 text-white px-8 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                            >
+                              Salvar Alterações
+                            </button>
+                            <button 
+                              onClick={handleCancelEdit}
+                              className="bg-slate-100 text-slate-600 px-8 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all"
+                            >
+                              Cancelar
+                            </button>
                           </div>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 gap-3">
-                          {q.options?.map((opt, oIdx) => {
-                            const isCorrect = opt === q.correctAnswer;
-                            return (
-                              <div 
-                                key={oIdx} 
-                                className={`p-5 rounded-2xl border-2 flex items-center gap-4 transition-all ${isCorrect ? 'bg-emerald-50 border-emerald-500 text-emerald-900' : 'bg-slate-50 border-slate-50 text-slate-600 hover:border-slate-200'}`}
-                              >
-                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${isCorrect ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-100' : 'bg-white border-2 border-slate-200'}`}>
-                                  {String.fromCharCode(65 + oIdx)}
-                                </div>
-                                <div className="text-base font-medium flex-1 prose prose-sm prose-slate max-w-none">
-                                  <MarkdownRenderer content={opt} />
-                                </div>
-                                {isCorrect && <CheckCircle2 size={20} className="text-emerald-500" />}
+                        <>
+                          <div className="prose prose-slate max-w-none mb-8">
+                            <MarkdownRenderer content={q.text} />
+                          </div>
+                          
+                          {q.visualType && q.visualType !== 'none' && q.visualContent && (
+                            <div className="mb-8 p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                              <div className="flex items-center gap-2 mb-4">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
+                                  {q.visualType === 'table' ? 'Tabela' : 
+                                  q.visualType === 'graph' ? 'Gráfico' : 
+                                  q.visualType === 'infographic' ? 'Infográfico' : 'Charge'}
+                                </span>
                               </div>
-                            );
-                          })}
-                        </div>
+                              <div className="prose prose-sm prose-slate max-w-none overflow-x-auto">
+                                <MarkdownRenderer content={q.visualContent} />
+                              </div>
+                            </div>
+                          )}
+                          
+                          {q.questionType === 'open' ? (
+                            <div className="mt-6">
+                              <div className="p-5 rounded-2xl border-2 border-emerald-500 bg-emerald-50 text-emerald-900">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <CheckCircle2 size={20} className="text-emerald-500" />
+                                  <span className="text-xs font-black uppercase tracking-widest text-emerald-600">Padrão de Resposta Esperado</span>
+                                </div>
+                                <div className="text-base font-medium prose prose-sm prose-slate max-w-none">
+                                  <MarkdownRenderer content={q.correctAnswer} />
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 gap-3">
+                              {q.options?.map((opt, oIdx) => {
+                                const isCorrect = opt === q.correctAnswer;
+                                return (
+                                  <div 
+                                    key={oIdx} 
+                                    className={`p-5 rounded-2xl border-2 flex items-center gap-4 transition-all ${isCorrect ? 'bg-emerald-50 border-emerald-500 text-emerald-900' : 'bg-slate-50 border-slate-50 text-slate-600 hover:border-slate-200'}`}
+                                  >
+                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${isCorrect ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-100' : 'bg-white border-2 border-slate-200'}`}>
+                                      {String.fromCharCode(65 + oIdx)}
+                                    </div>
+                                    <div className="text-base font-medium flex-1 prose prose-sm prose-slate max-w-none">
+                                      <MarkdownRenderer content={opt} />
+                                    </div>
+                                    {isCorrect && <CheckCircle2 size={20} className="text-emerald-500" />}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </>
                       )}
                     </motion.div>
                   ))}
