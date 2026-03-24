@@ -66,8 +66,8 @@ export const generateQuestions = async (
     ${formatPrompt}
     - Comentário: Forneça uma explicação detalhada.
     - Qualidade: Siga o padrão rigoroso das bancas solicitadas.
-    - Elementos Visuais e Gráficos: Se o assunto permitir, inclua tabelas em Markdown. Para gráficos, fluxogramas, diagramas de blocos ou estruturas, use blocos de código \`\`\`mermaid. Para estruturas químicas orgânicas complexas, você PODE usar código SVG limpo e responsivo diretamente no Markdown.
-    - Formatação Matemática e Química: Use OBRIGATORIAMENTE LaTeX para fórmulas matemáticas e químicas. Use \`$$\` para blocos e \`$\` para inline. Para compostos químicos (inclusive orgânicos simples e reações), use o pacote mhchem do KaTeX através do comando \`\\ce{}\` (exemplo: \`$\\ce{H2O}$\`, \`$$\\ce{CH3-CH2-OH}$$\`, \`$\\ce{SO4^2-}$\`). NUNCA use caracteres unicode puros para fórmulas complexas, use SEMPRE LaTeX.
+    - Elementos Visuais e Gráficos: Se o assunto permitir, inclua tabelas em Markdown com o conteúdo das colunas centralizado (ex: |:---:|). Para gráficos perfeitos, fluxogramas ou diagramas, use blocos de código \`\`\`mermaid com sintaxe correta e visual limpo.
+    - Formatação Matemática e Química: Use OBRIGATORIAMENTE LaTeX para fórmulas matemáticas e químicas. Use \`$$\` para blocos e \`$\` para inline. NÃO USE o comando \`\\ce{}\` para química, escreva as fórmulas químicas usando formatação matemática padrão do LaTeX (exemplo: \`$H_2O$\`, \`$X^{2+}$\`). NUNCA use caracteres unicode puros para fórmulas complexas, use SEMPRE LaTeX.
     
     Retorne APENAS o JSON seguindo o esquema fornecido, sem textos explicativos antes ou depois.`,
     config: {
@@ -158,7 +158,8 @@ export const gradeAnswerSheet = async (imageBase64: string, answerKey: string): 
           Tarefa:
           1. Identifique a alternativa marcada pelo aluno para cada questão (A, B, C, D ou E).
           2. Se não houver marcação clara, use "-".
-          3. Calcule o 'score' (total de acertos).
+          3. Se o gabarito oficial para uma questão for "-", significa que é uma questão discursiva e não deve ser corrigida automaticamente. Retorne "-" para a resposta do aluno nessa questão.
+          4. Calcule o 'score' (total de acertos). Não conte questões discursivas ("-") como acertos nem erros.
           
           Retorne obrigatoriamente um JSON puro no formato:
           {
@@ -199,6 +200,10 @@ export const autoGradeWithKey = async (imageBase64: string, answerKey: string): 
         {
           text: `Analise este cartão-resposta. 
           Gabarito oficial: ${answerKey}.
+          
+          Regras:
+          1. Identifique a alternativa marcada pelo aluno para cada questão (A, B, C, D ou E).
+          2. Se o gabarito oficial for "-", é uma questão discursiva. Retorne "-" para a resposta do aluno e não conte como acerto nem erro.
           
           Retorne um JSON com:
           - studentAnswers: array de letras (A-E ou "-")

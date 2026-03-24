@@ -28,7 +28,9 @@ const GabaritoComentado: React.FC<{ questions: Question[] }> = ({ questions }) =
                 {i + 1}
               </span>
               {q.questionType !== 'open' && (
-                <span className="font-black text-slate-900 uppercase text-xs tracking-widest">Resposta Correta: {q.correctAnswer.substring(0, 1)}</span>
+                <span className="font-black text-slate-900 uppercase text-xs tracking-widest">
+                  Resposta Correta: {q.options && q.options.findIndex(opt => opt === q.correctAnswer) >= 0 ? String.fromCharCode(65 + q.options.findIndex(opt => opt === q.correctAnswer)) : q.correctAnswer.substring(0, 1)}
+                </span>
               )}
             </div>
             {q.questionType === 'open' && (
@@ -151,7 +153,12 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
     }
   };
 
-  const answerKey = questions.map((q, i) => `${i + 1}:${q.correctAnswer.substring(0, 1)}`).join('|');
+  const answerKey = questions.map((q, i) => {
+    if (q.questionType === 'open') return `${i + 1}:-`;
+    const correctIndex = q.options?.findIndex(opt => opt === q.correctAnswer) ?? -1;
+    const letter = correctIndex >= 0 ? String.fromCharCode(65 + correctIndex) : q.correctAnswer.substring(0, 1);
+    return `${i + 1}:${letter}`;
+  }).join('|');
   const correctionUrl = `${window.location.origin}/#/correct?data=${encodeURIComponent(answerKey)}&title=${encodeURIComponent(subject)}&topic=${encodeURIComponent(topic)}`;
 
   return (
