@@ -236,9 +236,12 @@ const SuperScanner: React.FC<SuperScannerProps> = ({ onClose }) => {
               <h2 className="text-xl font-black text-slate-900 mb-2">{examData?.title}</h2>
               <p className="text-slate-500 text-sm mb-6">{examData?.topic}</p>
               
-              <div className="text-7xl font-black text-emerald-600 mb-8">
+              <div className="text-7xl font-black text-emerald-600 mb-2">
                 {result.score}
                 <span className="text-2xl text-slate-300 ml-2">/ {result.studentAnswers.length}</span>
+              </div>
+              <div className="text-xl font-bold text-slate-500 mb-8">
+                {Math.round((result.score / result.studentAnswers.length) * 100)}% de acerto
               </div>
 
               <div className="grid grid-cols-5 gap-2 w-full mb-8">

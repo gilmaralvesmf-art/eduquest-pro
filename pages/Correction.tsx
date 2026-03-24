@@ -136,6 +136,9 @@ const Correction: React.FC = () => {
             <div className="text-7xl font-black text-emerald-600 mt-2">
               {result.score} <span className="text-2xl text-slate-400">/ {answers.length}</span>
             </div>
+            <div className="text-xl font-bold text-slate-500 mt-2">
+              {Math.round((result.score / answers.length) * 100)}% de acerto
+            </div>
           </div>
           
           <div className="grid grid-cols-5 gap-2 pt-4">
