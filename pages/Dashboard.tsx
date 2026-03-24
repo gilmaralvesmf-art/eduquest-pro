@@ -91,7 +91,7 @@ const Dashboard: React.FC = () => {
 
   const getLimits = () => {
     if (!profile) return { assessments: 0, corrections: 0 };
-    if (profile.role === 'admin') return { assessments: Infinity, corrections: Infinity };
+    if (profile.role === 'admin' || profile.subscriptionStatus === 'lifetime' || profile.isLifetime) return { assessments: Infinity, corrections: Infinity };
     switch (profile.subscriptionStatus) {
       case 'monthly': return { assessments: 15, corrections: 150 };
       case 'quarterly': return { assessments: 25, corrections: 300 };
@@ -103,6 +103,7 @@ const Dashboard: React.FC = () => {
 
   const limits = getLimits();
   const isFree = profile?.subscriptionStatus === 'free';
+  const isLifetime = profile?.subscriptionStatus === 'lifetime';
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
@@ -130,7 +131,14 @@ const Dashboard: React.FC = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-        {isFree ? (
+        {isLifetime ? (
+          <StatCard 
+            title="Plano Vitalício" 
+            value="Ilimitado" 
+            icon={Zap} 
+            color="bg-indigo-50 text-indigo-600" 
+          />
+        ) : isFree ? (
            <StatCard 
             title="Créditos Gratuitos" 
             value={profile?.freeCredits || 0} 

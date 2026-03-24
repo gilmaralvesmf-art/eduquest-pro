@@ -48,14 +48,16 @@ const AIStudio: React.FC = () => {
         return;
       }
 
-      const limits = {
-        monthly: 15,
-        quarterly: 25,
-        semiannual: 40,
-        annual: 60
-      };
+      if (subscriptionStatus === 'lifetime' || profile.role === 'admin') {
+        // Unlimited access
+      } else {
+        const limits = {
+          monthly: 15,
+          quarterly: 25,
+          semiannual: 40,
+          annual: 60
+        };
 
-      if (subscriptionStatus !== 'free' && profile.role !== 'admin') {
         const limit = limits[subscriptionStatus as keyof typeof limits] || 0;
         if (usage?.assessmentsGenerated >= limit) {
            setError(`Você atingiu o limite de ${limit} avaliações do seu plano ${subscriptionStatus}.`);
@@ -349,7 +351,11 @@ const AIStudio: React.FC = () => {
                 )}
               </button>
               
-              {profile?.subscriptionStatus === 'free' && (
+              {profile?.subscriptionStatus === 'lifetime' ? (
+                <p className="text-center text-sm text-slate-500 mt-4">
+                  Você tem <span className="font-bold text-indigo-600">Créditos Ilimitados Vitalícios</span>.
+                </p>
+              ) : profile?.subscriptionStatus === 'free' && (
                 <p className="text-center text-sm text-slate-500 mt-4">
                   Você tem <span className="font-bold text-indigo-600">{profile.freeCredits}</span> {profile.freeCredits === 1 ? 'prova gratuita restante' : 'provas gratuitas restantes'}.
                 </p>

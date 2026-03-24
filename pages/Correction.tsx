@@ -22,12 +22,7 @@ const Correction: React.FC = () => {
     return { num, ans };
   });
 
-  // Auto-start camera on correction page
-  useEffect(() => {
-    if (data && !result && !isScanning) {
-      setIsScanning(true);
-    }
-  }, [data, result, isScanning]);
+  // Auto-start camera removed so user can see the answer key first
 
   const handleScan = useCallback(async () => {
     if (!webcamRef.current) {

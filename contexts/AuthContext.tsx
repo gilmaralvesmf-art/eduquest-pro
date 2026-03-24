@@ -9,7 +9,8 @@ export interface UserProfile {
   displayName: string;
   photoURL: string;
   freeCredits: number;
-  subscriptionStatus: 'free' | 'monthly' | 'quarterly' | 'semiannual' | 'annual';
+  subscriptionStatus: 'free' | 'monthly' | 'quarterly' | 'semiannual' | 'annual' | 'lifetime';
+  isLifetime?: boolean;
   role: 'user' | 'admin';
   createdAt: string;
   planExpiresAt?: string;
@@ -45,13 +46,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (docSnap.exists()) {
             const data = docSnap.data() as UserProfile;
             
-            // Auto-upgrade creator to admin
-            if (currentUser.email === 'gilmaralvesmf@gmail.com' && data.role !== 'admin') {
+            // Auto-upgrade creator to admin with lifetime credits
+            if (currentUser.email === 'gilmaralvesmf@gmail.com' && (data.role !== 'admin' || data.subscriptionStatus !== 'lifetime' || !data.isLifetime)) {
               try {
                 await updateDoc(userRef, {
                   role: 'admin',
-                  subscriptionStatus: 'annual',
-                  freeCredits: 999999
+                  subscriptionStatus: 'lifetime',
+                  isLifetime: true,
+                  freeCredits: 999999999,
+                  planExpiresAt: null
                 });
                 return; // The snapshot listener will trigger again
               } catch (error) {
@@ -108,8 +111,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               email: currentUser.email || '',
               displayName: currentUser.displayName || '',
               photoURL: currentUser.photoURL || '',
-              freeCredits: isAdmin ? 999999 : 3,
-              subscriptionStatus: isAdmin ? 'annual' : 'free',
+              freeCredits: isAdmin ? 999999999 : 3,
+              subscriptionStatus: isAdmin ? 'lifetime' : 'free',
+              isLifetime: isAdmin,
               role: isAdmin ? 'admin' : 'user',
               createdAt: new Date().toISOString(),
               usage: {
