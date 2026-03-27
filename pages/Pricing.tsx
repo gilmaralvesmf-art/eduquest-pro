@@ -79,6 +79,7 @@ const plans = [
 export const Pricing: React.FC = () => {
   const { profile } = useAuth();
   const isLifetime = profile?.subscriptionStatus === 'lifetime' || profile?.isLifetime;
+  const hasActivePlan = profile?.subscriptionStatus && profile.subscriptionStatus !== 'free';
 
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -89,7 +90,7 @@ export const Pricing: React.FC = () => {
             animate={{ y: 0, opacity: 1 }}
             className="text-3xl font-extrabold text-slate-900 sm:text-4xl"
           >
-            {isLifetime ? 'Você possui Acesso Vitalício!' : 'Seus créditos gratuitos acabaram!'}
+            {isLifetime ? 'Você possui Acesso Vitalício!' : hasActivePlan ? `Você possui o Plano ${profile.subscriptionStatus.charAt(0).toUpperCase() + profile.subscriptionStatus.slice(1)} Ativo!` : 'Seus créditos gratuitos acabaram!'}
           </motion.h2>
           <motion.p 
             initial={{ y: 20, opacity: 0 }}
@@ -99,6 +100,8 @@ export const Pricing: React.FC = () => {
           >
             {isLifetime 
               ? 'Aproveite todos os recursos ilimitados para sempre. Sua conta está configurada com créditos infinitos.'
+              : hasActivePlan
+              ? `Aproveite todos os recursos do seu plano. Sua assinatura está ativa e configurada com os limites contratados.`
               : 'Escolha o plano ideal para continuar transformando sua rotina como professor e economizar horas de trabalho toda semana.'}
           </motion.p>
         </div>

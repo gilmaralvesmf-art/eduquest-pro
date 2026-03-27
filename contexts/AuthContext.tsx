@@ -62,6 +62,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }
             }
 
+            // Auto-upgrade igoraquinodepinho@gmail.com to annual
+            if (currentUser.email === 'igoraquinodepinho@gmail.com' && data.subscriptionStatus !== 'annual') {
+              try {
+                const oneYearFromNow = new Date();
+                oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+                await updateDoc(userRef, {
+                  subscriptionStatus: 'annual',
+                  planExpiresAt: oneYearFromNow.toISOString(),
+                  freeCredits: 999999
+                });
+                return;
+              } catch (error) {
+                console.error("Error upgrading user to annual:", error);
+              }
+            }
+
             // Check if usage needs to be reset (e.g., 30 days passed since lastResetDate)
             if (data.subscriptionStatus !== 'free' && data.usage?.lastResetDate) {
               const lastReset = new Date(data.usage.lastResetDate);
@@ -106,15 +122,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } else {
             // Create new user profile
             const isAdmin = currentUser.email === 'gilmaralvesmf@gmail.com';
+            const isAnnual = currentUser.email === 'igoraquinodepinho@gmail.com';
+            
+            const oneYearFromNow = new Date();
+            oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+
             const newProfile: UserProfile = {
               uid: currentUser.uid,
               email: currentUser.email || '',
               displayName: currentUser.displayName || '',
               photoURL: currentUser.photoURL || '',
-              freeCredits: isAdmin ? 999999999 : 3,
-              subscriptionStatus: isAdmin ? 'lifetime' : 'free',
+              freeCredits: isAdmin ? 999999999 : (isAnnual ? 999999 : 3),
+              subscriptionStatus: isAdmin ? 'lifetime' : (isAnnual ? 'annual' : 'free'),
               isLifetime: isAdmin,
               role: isAdmin ? 'admin' : 'user',
+              planExpiresAt: isAnnual ? oneYearFromNow.toISOString() : undefined,
               createdAt: new Date().toISOString(),
               usage: {
                 assessmentsGenerated: 0,
