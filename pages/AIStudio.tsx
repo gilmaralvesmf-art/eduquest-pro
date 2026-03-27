@@ -252,6 +252,7 @@ const AIStudio: React.FC = () => {
                   <option>Inglês</option>
                   <option>Sociologia</option>
                   <option>Filosofia</option>
+                  <option>Artes</option>
                 </select>
               </div>
 
