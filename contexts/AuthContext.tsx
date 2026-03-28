@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
 export interface UserProfile {
@@ -124,6 +124,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const isAdmin = currentUser.email === 'gilmaralvesmf@gmail.com';
             const isAnnual = currentUser.email === 'igoraquinodepinho@gmail.com';
             
+            // Check for pending subscription from Kiwify
+            let pendingSub: any = null;
+            if (currentUser.email) {
+              try {
+                const pendingRef = doc(db, 'pending_subscriptions', currentUser.email);
+                const pendingSnap = await getDoc(pendingRef);
+                if (pendingSnap.exists()) {
+                  pendingSub = pendingSnap.data();
+                  // Mark as processed/delete so it's only used once
+                  await deleteDoc(pendingRef);
+                }
+              } catch (error) {
+                console.error("Error checking pending subscription:", error);
+              }
+            }
+
             const oneYearFromNow = new Date();
             oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
 
@@ -132,11 +148,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               email: currentUser.email || '',
               displayName: currentUser.displayName || '',
               photoURL: currentUser.photoURL || '',
-              freeCredits: isAdmin ? 999999999 : (isAnnual ? 999999 : 3),
-              subscriptionStatus: isAdmin ? 'lifetime' : (isAnnual ? 'annual' : 'free'),
+              freeCredits: isAdmin ? 999999999 : (isAnnual ? 999999 : (pendingSub ? 999999 : 3)),
+              subscriptionStatus: isAdmin ? 'lifetime' : (isAnnual ? 'annual' : (pendingSub ? pendingSub.plan : 'free')),
               isLifetime: isAdmin,
               role: isAdmin ? 'admin' : 'user',
-              planExpiresAt: isAnnual ? oneYearFromNow.toISOString() : undefined,
+              planExpiresAt: isAnnual ? oneYearFromNow.toISOString() : (pendingSub ? pendingSub.expiresAt : undefined),
               createdAt: new Date().toISOString(),
               usage: {
                 assessmentsGenerated: 0,

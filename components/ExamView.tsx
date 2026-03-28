@@ -1,10 +1,12 @@
 import React, { useRef, useState } from 'react';
-import { Download, Loader2, ArrowLeft, Printer } from 'lucide-react';
+import { Download, Loader2, ArrowLeft, Printer, FileText } from 'lucide-react';
 import { motion } from 'motion/react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { Question } from '../types';
 import { QRCodeSVG } from 'qrcode.react';
 import html2pdf from 'html2pdf.js';
+import { Document, Packer, Paragraph, TextRun, AlignmentType, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle } from 'docx';
+import { saveAs } from 'file-saver';
 
 interface ExamViewProps {
   subject: string;
@@ -149,6 +151,141 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
       alert('Ocorreu um erro ao gerar o PDF.');
     } finally {
       setIsTeacherMode(prevMode);
+      setExporting(false);
+    }
+  };
+
+  const handleExportWord = async (mode: 'student' | 'teacher') => {
+    setExporting(true);
+    try {
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children: [
+            new Paragraph({
+              text: `Avaliação de ${subject}${mode === 'teacher' ? ' (Professor)' : ''}`,
+              heading: HeadingLevel.HEADING_1,
+              alignment: AlignmentType.CENTER,
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({ text: `Tópico: ${topic}`, bold: true }),
+                new TextRun({ text: `  •  Banca: ${board}`, bold: true }),
+              ],
+              alignment: AlignmentType.CENTER,
+            }),
+            new Paragraph({ text: "" }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              rows: [
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      children: [new Paragraph({ text: "Nome do Aluno: ________________________________________________" })],
+                      width: { size: 70, type: WidthType.PERCENTAGE },
+                    }),
+                    new TableCell({
+                      children: [new Paragraph({ text: "Data: ____/____/____" })],
+                      width: { size: 30, type: WidthType.PERCENTAGE },
+                    }),
+                  ],
+                }),
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      children: [new Paragraph({ text: "Turma: ________________" })],
+                      width: { size: 50, type: WidthType.PERCENTAGE },
+                    }),
+                    new TableCell({
+                      children: [new Paragraph({ text: "Nota: ________" })],
+                      width: { size: 50, type: WidthType.PERCENTAGE },
+                    }),
+                  ],
+                }),
+              ],
+            }),
+            new Paragraph({ text: "" }),
+            ...questions.flatMap((q, idx) => {
+              const questionElements = [
+                new Paragraph({
+                  children: [
+                    new TextRun({ text: `${idx + 1}. `, bold: true }),
+                    new TextRun({ text: q.text.replace(/[*_~`]/g, '') }), // Basic markdown stripping for Word
+                  ],
+                  spacing: { before: 400 },
+                }),
+              ];
+
+              if (q.questionType === 'open') {
+                if (mode === 'student') {
+                  for (let i = 0; i < 5; i++) {
+                    questionElements.push(new Paragraph({ text: "____________________________________________________________________________________" }));
+                  }
+                } else {
+                  questionElements.push(new Paragraph({
+                    children: [
+                      new TextRun({ text: "Padrão de Resposta: ", bold: true, color: "10b981" }),
+                      new TextRun({ text: q.correctAnswer.replace(/[*_~`]/g, '') }),
+                    ],
+                  }));
+                }
+              } else {
+                q.options?.forEach((opt, oIdx) => {
+                  const isCorrect = opt === q.correctAnswer;
+                  questionElements.push(new Paragraph({
+                    children: [
+                      new TextRun({ text: `${String.fromCharCode(65 + oIdx)}) `, bold: mode === 'teacher' && isCorrect }),
+                      new TextRun({ text: opt.replace(/[*_~`]/g, ''), bold: mode === 'teacher' && isCorrect, color: mode === 'teacher' && isCorrect ? "10b981" : undefined }),
+                    ],
+                    indent: { left: 720 },
+                  }));
+                });
+              }
+
+              if (mode === 'teacher' && q.commentary) {
+                questionElements.push(new Paragraph({
+                  children: [
+                    new TextRun({ text: "Comentário: ", bold: true, color: "4f46e5" }),
+                    new TextRun({ text: q.commentary.replace(/[*_~`]/g, ''), italics: true }),
+                  ],
+                  indent: { left: 360 },
+                  spacing: { before: 200 },
+                }));
+              }
+
+              return questionElements;
+            }),
+            ...(mode === 'teacher' ? [
+              new Paragraph({ text: "", spacing: { before: 800 } }),
+              new Paragraph({
+                text: "Gabarito Oficial",
+                heading: HeadingLevel.HEADING_2,
+                alignment: AlignmentType.CENTER,
+              }),
+              new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                rows: questions.map((q, i) => {
+                  const correctIndex = q.options?.findIndex(opt => opt === q.correctAnswer) ?? -1;
+                  const letter = correctIndex >= 0 ? String.fromCharCode(65 + correctIndex) : (q.questionType === 'open' ? 'Discursiva' : q.correctAnswer.substring(0, 1));
+                  return new TableRow({
+                    children: [
+                      new TableCell({ children: [new Paragraph({ text: `Questão ${i + 1}` })] }),
+                      new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: letter, bold: true })] })] }),
+                    ],
+                  });
+                }),
+              }),
+            ] : []),
+          ],
+        }],
+      });
+
+      const blob = await Packer.toBlob(doc);
+      saveAs(blob, `${mode === 'teacher' ? 'Professor' : 'Aluno'}_${subject}_${topic.replace(/\s+/g, '_')}.docx`);
+    } catch (error) {
+      console.error('Erro ao exportar Word:', error);
+      alert('Ocorreu um erro ao gerar o arquivo Word.');
+    } finally {
       setExporting(false);
     }
   };
@@ -327,7 +464,15 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
           className={`px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-xl ${exporting ? 'opacity-70 cursor-not-allowed' : ''}`}
         >
           {exporting ? <Loader2 className="animate-spin" size={20} /> : <Download size={20} />}
-          PDF do Aluno
+          PDF Aluno
+        </button>
+        <button 
+          onClick={() => handleExportWord('student')}
+          disabled={exporting}
+          className={`px-6 py-3 bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-2xl font-bold hover:bg-indigo-100 transition-all flex items-center gap-2 ${exporting ? 'opacity-70 cursor-not-allowed' : ''}`}
+        >
+          {exporting ? <Loader2 className="animate-spin" size={20} /> : <FileText size={20} />}
+          Word Aluno
         </button>
         <button 
           onClick={() => handleExportPDF('teacher')}
@@ -335,7 +480,15 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
           className={`px-6 py-3 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-xl ${exporting ? 'opacity-70 cursor-not-allowed' : ''}`}
         >
           {exporting ? <Loader2 className="animate-spin" size={20} /> : <Download size={20} />}
-          PDF do Professor
+          PDF Professor
+        </button>
+        <button 
+          onClick={() => handleExportWord('teacher')}
+          disabled={exporting}
+          className={`px-6 py-3 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-2xl font-bold hover:bg-emerald-100 transition-all flex items-center gap-2 ${exporting ? 'opacity-70 cursor-not-allowed' : ''}`}
+        >
+          {exporting ? <Loader2 className="animate-spin" size={20} /> : <FileText size={20} />}
+          Word Professor
         </button>
       </div>
     </motion.div>

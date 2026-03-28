@@ -75,8 +75,19 @@ router.post('/webhook', async (req, res) => {
         
         console.log(`Usuário ${customerEmail} atualizado para o plano ${plan}. Expira em: ${expiresAt.toISOString()}`);
       } else {
-        console.log(`Usuário com email ${customerEmail} não encontrado no Firestore.`);
-        // Opcional: Criar um registro pendente ou enviar um email para o usuário se cadastrar
+        console.log(`Usuário com email ${customerEmail} não encontrado no Firestore. Criando assinatura pendente.`);
+        // Criar um registro de assinatura pendente
+        const now = new Date();
+        const expiresAt = new Date();
+        expiresAt.setMonth(expiresAt.getMonth() + monthsToAdd);
+
+        await db.collection('pending_subscriptions').doc(customerEmail).set({
+          email: customerEmail,
+          plan: plan,
+          expiresAt: expiresAt.toISOString(),
+          createdAt: now.toISOString(),
+          processed: false
+        });
       }
       
       // Retornar sucesso para a Kiwify
