@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import Webcam from 'react-webcam';
 import jsQR from 'jsqr';
 import { Camera, Loader2, X, CheckCircle2, Award, RotateCcw, AlertCircle } from 'lucide-react';
+import { motion } from 'motion/react';
 import { autoGradeWithKey } from '../services/geminiService';
 import { storageService } from '../services/storageService';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,6 +24,31 @@ const SuperScanner: React.FC<SuperScannerProps> = ({ onClose }) => {
   const [examData, setExamData] = useState<{ data: string; title: string; topic: string } | null>(null);
   const [result, setResult] = useState<{ studentAnswers: string[], score: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [torchOn, setTorchOn] = useState(false);
+
+  const toggleTorch = useCallback(async () => {
+    if (!webcamRef.current || !webcamRef.current.video) return;
+    
+    const stream = (webcamRef.current.video as any).srcObject as MediaStream;
+    if (!stream) return;
+
+    const track = stream.getVideoTracks()[0];
+    if (!track) return;
+
+    const capabilities = track.getCapabilities() as any;
+    if (capabilities.torch) {
+      try {
+        await track.applyConstraints({
+          advanced: [{ torch: !torchOn }]
+        } as any);
+        setTorchOn(!torchOn);
+      } catch (err) {
+        console.error("Erro ao alternar lanterna:", err);
+      }
+    } else {
+      alert("Lanterna não suportada neste dispositivo/navegador.");
+    }
+  }, [torchOn]);
 
   const captureAndGrade = useCallback(async (answerKey: string, title: string, topic: string) => {
     if (!webcamRef.current) return;
@@ -203,17 +229,41 @@ const SuperScanner: React.FC<SuperScannerProps> = ({ onClose }) => {
               />
               <canvas ref={canvasRef} className="hidden" />
               
+              {/* Scanning Line Animation */}
+              {!loading && (
+                <motion.div 
+                  animate={{ top: ['10%', '90%', '10%'] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                  className="absolute left-0 right-0 h-1 bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.8)] z-10"
+                />
+              )}
+
+              {/* Flashlight Button */}
+              <button 
+                onClick={toggleTorch}
+                className={`absolute top-4 right-4 p-3 rounded-full backdrop-blur-md transition-all z-20 ${torchOn ? 'bg-amber-500 text-white' : 'bg-white/20 text-white'}`}
+              >
+                <Camera size={20} className={torchOn ? 'fill-current' : ''} />
+              </button>
+              
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <div className="w-64 h-64 border-2 border-dashed border-white/50 rounded-3xl relative">
                   <div className="absolute inset-0 border-2 border-indigo-500 rounded-3xl animate-pulse"></div>
+                  
+                  {/* Corner Brackets */}
+                  <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-indigo-500 rounded-tl-xl"></div>
+                  <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-indigo-500 rounded-tr-xl"></div>
+                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-indigo-500 rounded-bl-xl"></div>
+                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-indigo-500 rounded-br-xl"></div>
+
                   <div className="absolute -top-10 left-0 right-0 text-center">
                     <span className="bg-indigo-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">
                       Aponte para o QR Code e Gabarito
                     </span>
                   </div>
                 </div>
-                <p className="mt-8 text-white/70 text-xs font-medium px-8 text-center">
-                  Posicione o QR Code e o gabarito dentro da área demarcada para correção automática.
+                <p className="mt-8 text-white/70 text-[10px] font-bold uppercase tracking-widest px-8 text-center">
+                  Mantenha a folha plana e evite sombras
                 </p>
               </div>
             </>

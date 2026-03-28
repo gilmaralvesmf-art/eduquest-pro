@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { CheckCircle2, ArrowLeft, Printer, Info, Camera, Loader2, RotateCcw, Award } from 'lucide-react';
 import Webcam from 'react-webcam';
+import { motion } from 'motion/react';
 import { gradeAnswerSheet } from '../services/geminiService';
 import { storageService } from '../services/storageService';
 
@@ -15,6 +16,7 @@ const Correction: React.FC = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ studentAnswers: string[], score: number } | null>(null);
+  const [torchOn, setTorchOn] = useState(false);
   const webcamRef = useRef<Webcam>(null);
 
   const answers = data.split('|').map(item => {
@@ -22,7 +24,29 @@ const Correction: React.FC = () => {
     return { num, ans };
   });
 
-  // Auto-start camera removed so user can see the answer key first
+  const toggleTorch = useCallback(async () => {
+    if (!webcamRef.current || !webcamRef.current.video) return;
+    
+    const stream = (webcamRef.current.video as any).srcObject as MediaStream;
+    if (!stream) return;
+
+    const track = stream.getVideoTracks()[0];
+    if (!track) return;
+
+    const capabilities = track.getCapabilities() as any;
+    if (capabilities.torch) {
+      try {
+        await track.applyConstraints({
+          advanced: [{ torch: !torchOn }]
+        } as any);
+        setTorchOn(!torchOn);
+      } catch (err) {
+        console.error("Erro ao alternar lanterna:", err);
+      }
+    } else {
+      alert("Lanterna não suportada neste dispositivo/navegador.");
+    }
+  }, [torchOn]);
 
   const handleScan = useCallback(async () => {
     if (!webcamRef.current) {
@@ -104,10 +128,43 @@ const Correction: React.FC = () => {
             }}
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 border-[20px] sm:border-[40px] border-black/40 pointer-events-none">
-            <div className="w-full h-full border-2 border-dashed border-white/50 rounded-xl"></div>
+          
+          {/* Scanning Line Animation */}
+          {!loading && (
+            <motion.div 
+              animate={{ top: ['10%', '90%', '10%'] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+              className="absolute left-0 right-0 h-1 bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.8)] z-10"
+            />
+          )}
+
+          {/* Alignment Guides */}
+          <div className="absolute inset-0 border-[40px] border-black/40 pointer-events-none z-0">
+            <div className="w-full h-full border-2 border-dashed border-white/50 rounded-xl relative">
+              {/* Corner Brackets */}
+              <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-indigo-500"></div>
+              <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-indigo-500"></div>
+              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-indigo-500"></div>
+              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-indigo-500"></div>
+            </div>
           </div>
-          <div className="absolute bottom-6 left-0 right-0 flex flex-col sm:flex-row justify-center gap-3 px-6">
+
+          {/* Flashlight Button */}
+          <button 
+            onClick={toggleTorch}
+            className={`absolute top-6 right-6 p-3 rounded-full backdrop-blur-md transition-all z-20 ${torchOn ? 'bg-amber-500 text-white' : 'bg-white/20 text-white'}`}
+          >
+            <Camera size={20} className={torchOn ? 'fill-current' : ''} />
+          </button>
+
+          {/* Instructions Overlay */}
+          <div className="absolute top-6 left-6 right-16 z-20">
+            <div className="bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold uppercase tracking-widest px-3 py-2 rounded-lg inline-block">
+              Centralize a folha e evite sombras
+            </div>
+          </div>
+
+          <div className="absolute bottom-6 left-0 right-0 flex flex-col sm:flex-row justify-center gap-3 px-6 z-20">
             <button 
               onClick={() => setIsScanning(false)}
               className="bg-white/20 backdrop-blur-md text-white px-6 py-3 rounded-2xl font-bold hover:bg-white/30 transition-all text-sm"

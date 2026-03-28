@@ -152,12 +152,19 @@ export const gradeAnswerSheet = async (imageBase64: string, answerKey: string): 
           }
         },
         {
-          text: `Analise este cartão-resposta de prova. 
+          text: `Você é um especialista em visão computacional e correção de provas. Analise este cartão-resposta de prova.
+          
           O gabarito oficial é: ${answerKey}.
+          
+          Instruções de Processamento de Imagem:
+          - A imagem pode estar inclinada, com sombras ou iluminação irregular.
+          - Ignore sombras e reflexos; foque nas marcações (círculos preenchidos ou X).
+          - Mesmo que a imagem esteja em um ângulo difícil, use os pontos de referência do cartão (bordas, números das questões) para alinhar mentalmente a grade de respostas.
+          - Se uma marcação estiver parcial, mas for claramente a intenção do aluno, considere-a.
           
           Tarefa:
           1. Identifique a alternativa marcada pelo aluno para cada questão (A, B, C, D ou E).
-          2. Se não houver marcação clara, use "-".
+          2. Se não houver marcação clara ou houver múltiplas marcações conflitantes, use "-".
           3. Se o gabarito oficial para uma questão for "-", significa que é uma questão discursiva e não deve ser corrigida automaticamente. Retorne "-" para a resposta do aluno nessa questão.
           4. Calcule o 'score' (total de acertos). Não conte questões discursivas ("-") como acertos nem erros.
           
@@ -198,12 +205,18 @@ export const autoGradeWithKey = async (imageBase64: string, answerKey: string): 
           }
         },
         {
-          text: `Analise este cartão-resposta. 
+          text: `Você é um especialista em visão computacional e correção de provas. Analise este cartão-resposta. 
           Gabarito oficial: ${answerKey}.
+          
+          Instruções de Processamento de Imagem:
+          - A imagem pode estar inclinada, com sombras ou iluminação irregular.
+          - Ignore sombras e reflexos; foque nas marcações (círculos preenchidos ou X).
+          - Mesmo que a imagem esteja em um ângulo difícil, use os pontos de referência do cartão (bordas, números das questões) para alinhar mentalmente a grade de respostas.
           
           Regras:
           1. Identifique a alternativa marcada pelo aluno para cada questão (A, B, C, D ou E).
           2. Se o gabarito oficial for "-", é uma questão discursiva. Retorne "-" para a resposta do aluno e não conte como acerto nem erro.
+          3. Se não houver marcação clara ou houver múltiplas marcações conflitantes, use "-".
           
           Retorne um JSON com:
           - studentAnswers: array de letras (A-E ou "-")
