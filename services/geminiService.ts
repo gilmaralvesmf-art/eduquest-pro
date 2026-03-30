@@ -83,7 +83,7 @@ export const generateQuestions = async (
 
   const generate = async () => {
     return await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.1-flash-lite-preview",
       contents: `Você é um especialista em elaboração de questões de concursos e vestibulares de alto nível (como ITA, IME, FUVEST e bancas regionais como UECE, URCA, UPE, UFPE).
       Gere exatamente ${count} questões ${questionType === 'mixed' ? 'mesclando múltipla escolha e discursivas' : (questionType === 'multiple_choice' ? 'de múltipla escolha' : 'discursivas/abertas')} inéditas sobre "${topic}" na disciplina de "${subject}"${boardPrompt}.
       
@@ -191,7 +191,7 @@ export const gradeAnswerSheet = async (imageBase64: string, answerKey: string): 
   
   const generate = async () => {
     return await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.1-flash-lite-preview",
       contents: [
         {
           inlineData: {
@@ -265,7 +265,7 @@ export const autoGradeWithKey = async (imageBase64: string, answerKey: string): 
   
   const generate = async () => {
     return await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.1-flash-lite-preview",
       contents: [
         {
           inlineData: {

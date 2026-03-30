@@ -144,6 +144,11 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /pending_subscriptions/{email} {
+      // Allow users to read and delete their own pending subscription
+      allow read, delete: if isAuthenticated() && request.auth.token.email == email;
+    }
+
     match /exams/{examId} {
       // Users can only read, create, update, and delete their own exams
       allow read: if isAuthenticated() && (resource.data.authorUid == request.auth.uid || isAdmin());

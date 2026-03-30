@@ -143,7 +143,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 subscriptionStatus: isAdmin ? 'lifetime' : (isAnnual ? 'annual' : (pendingSub ? pendingSub.plan : 'free')),
                 isLifetime: isAdmin,
                 role: isAdmin ? 'admin' : 'user',
-                planExpiresAt: isAnnual ? oneYearFromNow.toISOString() : (pendingSub ? pendingSub.expiresAt : undefined),
+                planExpiresAt: isAnnual ? oneYearFromNow.toISOString() : (pendingSub ? pendingSub.expiresAt : null),
                 createdAt: new Date().toISOString(),
                 usage: {
                   assessmentsGenerated: 0,

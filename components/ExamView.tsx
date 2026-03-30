@@ -132,7 +132,7 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
     setIsTeacherMode(mode === 'teacher');
     
     // Wait for state update and re-render
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     try {
       const element = examRef.current;
@@ -140,7 +140,12 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
         margin:       10,
         filename:     `${mode === 'teacher' ? 'Professor' : 'Aluno'}_${subject}_${topic.replace(/\s+/g, '_')}.pdf`,
         image:        { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, windowWidth: element.scrollWidth },
+        html2canvas:  { 
+          scale: 2, 
+          useCORS: true, 
+          windowWidth: 1024,
+          logging: false
+        },
         jsPDF:        { unit: 'mm' as const, format: 'a4', orientation: 'portrait' as const },
         pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
       };
@@ -153,6 +158,26 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
       setIsTeacherMode(prevMode);
       setExporting(false);
     }
+  };
+
+  const cleanTextForWord = (text: string) => {
+    if (!text) return "";
+    return text
+      .replace(/\\rightarrow/g, '→')
+      .replace(/\\Delta/g, 'Δ')
+      .replace(/\\ce\{([^}]+)\}/g, '$1')
+      .replace(/\\text\{([^}]+)\}/g, '$1')
+      .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2')
+      .replace(/\\sqrt\{([^}]+)\}/g, '√($1)')
+      .replace(/\\cdot/g, '·')
+      .replace(/\\times/g, '×')
+      .replace(/\\degree/g, '°')
+      .replace(/\^\{([^}]+)\}/g, '^$1')
+      .replace(/\_\{([^}]+)\}/g, '_$1')
+      .replace(/\$+/g, '') // Remove all $ symbols
+      .replace(/[*_~`#]/g, '') // Remove basic markdown
+      .replace(/\\/g, '') // Remove remaining backslashes
+      .trim();
   };
 
   const handleExportWord = async (mode: 'student' | 'teacher') => {
@@ -206,15 +231,26 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
             }),
             new Paragraph({ text: "" }),
             ...questions.flatMap((q, idx) => {
-              const questionElements = [
+              const questionElements: any[] = [
                 new Paragraph({
                   children: [
                     new TextRun({ text: `${idx + 1}. `, bold: true }),
-                    new TextRun({ text: q.text.replace(/[*_~`]/g, '') }), // Basic markdown stripping for Word
+                    new TextRun({ text: cleanTextForWord(q.text) }),
                   ],
                   spacing: { before: 400 },
                 }),
               ];
+
+              if (q.visualContent && q.visualType !== 'none') {
+                questionElements.push(new Paragraph({
+                  children: [
+                    new TextRun({ text: "[Conteúdo Visual/Tabela]: ", bold: true, italics: true, color: "666666" }),
+                    new TextRun({ text: cleanTextForWord(q.visualContent), italics: true, color: "666666" }),
+                  ],
+                  spacing: { before: 200, after: 200 },
+                  indent: { left: 720 },
+                }));
+              }
 
               if (q.questionType === 'open') {
                 if (mode === 'student') {
@@ -225,8 +261,10 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
                   questionElements.push(new Paragraph({
                     children: [
                       new TextRun({ text: "Padrão de Resposta: ", bold: true, color: "10b981" }),
-                      new TextRun({ text: q.correctAnswer.replace(/[*_~`]/g, '') }),
+                      new TextRun({ text: cleanTextForWord(q.correctAnswer) }),
                     ],
+                    spacing: { before: 200 },
+                    indent: { left: 720 },
                   }));
                 }
               } else {
@@ -235,7 +273,7 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
                   questionElements.push(new Paragraph({
                     children: [
                       new TextRun({ text: `${String.fromCharCode(65 + oIdx)}) `, bold: mode === 'teacher' && isCorrect }),
-                      new TextRun({ text: opt.replace(/[*_~`]/g, ''), bold: mode === 'teacher' && isCorrect, color: mode === 'teacher' && isCorrect ? "10b981" : undefined }),
+                      new TextRun({ text: cleanTextForWord(opt), bold: mode === 'teacher' && isCorrect, color: mode === 'teacher' && isCorrect ? "10b981" : undefined }),
                     ],
                     indent: { left: 720 },
                   }));
@@ -246,9 +284,9 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
                 questionElements.push(new Paragraph({
                   children: [
                     new TextRun({ text: "Comentário: ", bold: true, color: "4f46e5" }),
-                    new TextRun({ text: q.commentary.replace(/[*_~`]/g, ''), italics: true }),
+                    new TextRun({ text: cleanTextForWord(q.commentary), italics: true }),
                   ],
-                  indent: { left: 360 },
+                  indent: { left: 720 },
                   spacing: { before: 200 },
                 }));
               }
@@ -264,16 +302,32 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
               }),
               new Table({
                 width: { size: 100, type: WidthType.PERCENTAGE },
-                rows: questions.map((q, i) => {
-                  const correctIndex = q.options?.findIndex(opt => opt === q.correctAnswer) ?? -1;
-                  const letter = correctIndex >= 0 ? String.fromCharCode(65 + correctIndex) : (q.questionType === 'open' ? 'Discursiva' : q.correctAnswer.substring(0, 1));
-                  return new TableRow({
+                borders: {
+                  top: { style: BorderStyle.SINGLE, size: 1 },
+                  bottom: { style: BorderStyle.SINGLE, size: 1 },
+                  left: { style: BorderStyle.SINGLE, size: 1 },
+                  right: { style: BorderStyle.SINGLE, size: 1 },
+                  insideHorizontal: { style: BorderStyle.SINGLE, size: 1 },
+                  insideVertical: { style: BorderStyle.SINGLE, size: 1 },
+                },
+                rows: [
+                  new TableRow({
                     children: [
-                      new TableCell({ children: [new Paragraph({ text: `Questão ${i + 1}` })] }),
-                      new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: letter, bold: true })] })] }),
+                      new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Questão", bold: true })], alignment: AlignmentType.CENTER })] }),
+                      new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Gabarito", bold: true })], alignment: AlignmentType.CENTER })] }),
                     ],
-                  });
-                }),
+                  }),
+                  ...questions.map((q, i) => {
+                    const correctIndex = q.options?.findIndex(opt => opt === q.correctAnswer) ?? -1;
+                    const letter = correctIndex >= 0 ? String.fromCharCode(65 + correctIndex) : (q.questionType === 'open' ? 'Discursiva' : q.correctAnswer.substring(0, 1));
+                    return new TableRow({
+                      children: [
+                        new TableCell({ children: [new Paragraph({ text: `${i + 1}`, alignment: AlignmentType.CENTER })] }),
+                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: letter, bold: true })], alignment: AlignmentType.CENTER })] }),
+                      ],
+                    });
+                  }),
+                ],
               }),
             ] : []),
           ],
