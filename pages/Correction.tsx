@@ -76,11 +76,22 @@ const Correction: React.FC = () => {
       });
     } catch (error: any) {
       console.error("Erro ao corrigir:", error);
-      alert(`Erro: ${error.message || "Ocorreu um problema ao processar a imagem. Tente novamente."}`);
+      let userMessage = "Ocorreu um problema ao processar a imagem. Tente novamente.";
+      const errorStr = JSON.stringify(error);
+      
+      if (errorStr.includes('503') || errorStr.includes('UNAVAILABLE')) {
+        userMessage = "O servidor de IA está com alta demanda. Por favor, aguarde alguns segundos e tente capturar novamente.";
+      } else if (errorStr.includes('429') || errorStr.includes('RESOURCE_EXHAUSTED')) {
+        userMessage = "Limite de requisições da IA atingido. Por favor, aguarde um instante e tente novamente.";
+      } else if (error.message) {
+        userMessage = error.message;
+      }
+      
+      alert(`Erro: ${userMessage}`);
     } finally {
       setLoading(false);
     }
-  }, [data]);
+  }, [data, title, topic, answers.length]);
 
   const resetScanner = () => {
     setResult(null);

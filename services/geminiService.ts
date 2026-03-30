@@ -29,6 +29,28 @@ const getApiKey = async (): Promise<string> => {
   throw new Error("Chave de API não encontrada. Por favor, verifique as configurações do ambiente.");
 };
 
+const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 2000): Promise<T> => {
+  try {
+    return await fn();
+  } catch (error: any) {
+    const errorStr = JSON.stringify(error);
+    const isRetryable = 
+      errorStr.includes('503') || 
+      errorStr.includes('429') || 
+      errorStr.includes('UNAVAILABLE') || 
+      errorStr.includes('RESOURCE_EXHAUSTED') ||
+      error.message?.includes('503') ||
+      error.message?.includes('429');
+
+    if (retries > 0 && isRetryable) {
+      console.warn(`Gemini API em alta demanda, tentando novamente em ${delay}ms... (${retries} tentativas restantes)`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return withRetry(fn, retries - 1, delay * 2);
+    }
+    throw error;
+  }
+};
+
 export const generateQuestions = async (
   subject: string, 
   topic: string, 
@@ -55,79 +77,80 @@ export const generateQuestions = async (
     ? `- Nível de dificuldade: Mesclada (Distribua as questões entre Fácil, Médio e Difícil de forma equilibrada).`
     : `- Nível de dificuldade: ${difficulty}.`;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: `Você é um especialista em elaboração de questões de concursos e vestibulares de alto nível (como ITA, IME, FUVEST e bancas regionais como UECE, URCA, UPE, UFPE).
-    Gere exatamente ${count} questões ${questionType === 'mixed' ? 'mesclando múltipla escolha e discursivas' : (questionType === 'multiple_choice' ? 'de múltipla escolha' : 'discursivas/abertas')} inéditas sobre "${topic}" na disciplina de "${subject}"${boardPrompt}.
-    
-    Critérios:
-    ${difficultyPrompt}
-    - Idioma: Português do Brasil.
-    ${formatPrompt}
-    - Comentário: Forneça uma explicação detalhada.
-    - Qualidade: Siga o padrão rigoroso das bancas solicitadas.
-    - Elementos Visuais e Gráficos: Se o assunto permitir, inclua tabelas em Markdown com o conteúdo das colunas centralizado (ex: |:---:|). Para gráficos perfeitos, fluxogramas ou diagramas, use blocos de código \`\`\`mermaid com sintaxe correta e visual limpo.
-    - Formatação Matemática e Química: Use OBRIGATORIAMENTE LaTeX para fórmulas matemáticas e químicas. Use \`$$\` para blocos e \`$\` para inline. NÃO USE o comando \`\\ce{}\` para química, escreva as fórmulas químicas usando formatação matemática padrão do LaTeX (exemplo: \`$H_2O$\`, \`$X^{2+}$\`). NUNCA use caracteres unicode puros para fórmulas complexas, use SEMPRE LaTeX.
-    
-    Retorne APENAS o JSON seguindo o esquema fornecido, sem textos explicativos antes ou depois.`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            id: { type: Type.STRING },
-            subject: { type: Type.STRING },
-            topic: { type: Type.STRING },
-            text: { type: Type.STRING },
-            options: { 
-              type: Type.ARRAY, 
-              items: { type: Type.STRING },
-              description: "Lista de 5 alternativas (vazio se for questão aberta)"
+  const generate = async () => {
+    return await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Você é um especialista em elaboração de questões de concursos e vestibulares de alto nível (como ITA, IME, FUVEST e bancas regionais como UECE, URCA, UPE, UFPE).
+      Gere exatamente ${count} questões ${questionType === 'mixed' ? 'mesclando múltipla escolha e discursivas' : (questionType === 'multiple_choice' ? 'de múltipla escolha' : 'discursivas/abertas')} inéditas sobre "${topic}" na disciplina de "${subject}"${boardPrompt}.
+      
+      Critérios:
+      ${difficultyPrompt}
+      - Idioma: Português do Brasil.
+      ${formatPrompt}
+      - Comentário: Forneça uma explicação detalhada.
+      - Qualidade: Siga o padrão rigoroso das bancas solicitadas.
+      - Elementos Visuais e Gráficos: Se o assunto permitir, inclua tabelas em Markdown com o conteúdo das colunas centralizado (ex: |:---:|). Para gráficos perfeitos, fluxogramas ou diagramas, use blocos de código \`\`\`mermaid com sintaxe correta e visual limpo.
+      - Formatação Matemática e Química: Use OBRIGATORIAMENTE LaTeX para fórmulas matemáticas e químicas. Use \`$$\` para blocos e \`$\` para inline. NÃO USE o comando \`\\ce{}\` para química, escreva as fórmulas químicas usando formatação matemática padrão do LaTeX (exemplo: \`$H_2O$\`, \`$X^{2+}$\`). NUNCA use caracteres unicode puros para fórmulas complexas, use SEMPRE LaTeX.
+      
+      Retorne APENAS o JSON seguindo o esquema fornecido, sem textos explicativos antes ou depois.`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              id: { type: Type.STRING },
+              subject: { type: Type.STRING },
+              topic: { type: Type.STRING },
+              text: { type: Type.STRING },
+              options: { 
+                type: Type.ARRAY, 
+                items: { type: Type.STRING },
+                description: "Lista de 5 alternativas (vazio se for questão aberta)"
+              },
+              correctAnswer: { 
+                type: Type.STRING,
+                description: "O texto exato da alternativa correta ou o padrão de resposta esperado para questões abertas"
+              },
+              commentary: {
+                type: Type.STRING,
+                description: "Explicação detalhada da questão e do gabarito"
+              },
+              visualType: { 
+                type: Type.STRING, 
+                enum: ["table", "graph", "infographic", "charge", "none"],
+                description: "Tipo de elemento visual que acompanha a questão"
+              },
+              visualContent: { 
+                type: Type.STRING,
+                description: "Conteúdo do elemento visual (Markdown para tabela, descrição para outros)"
+              },
+              questionType: {
+                type: Type.STRING,
+                description: "O tipo de questão gerada ('multiple_choice' ou 'open')"
+              },
+              difficulty: { 
+                type: Type.STRING,
+                enum: ["Fácil", "Médio", "Difícil"],
+                description: "A dificuldade específica desta questão"
+              },
+              year: { type: Type.NUMBER },
+              source: { type: Type.STRING }
             },
-            correctAnswer: { 
-              type: Type.STRING,
-              description: "O texto exato da alternativa correta ou o padrão de resposta esperado para questões abertas"
-            },
-            commentary: {
-              type: Type.STRING,
-              description: "Explicação detalhada da questão e do gabarito"
-            },
-            visualType: { 
-              type: Type.STRING, 
-              enum: ["table", "graph", "infographic", "charge", "none"],
-              description: "Tipo de elemento visual que acompanha a questão"
-            },
-            visualContent: { 
-              type: Type.STRING,
-              description: "Conteúdo do elemento visual (Markdown para tabela, descrição para outros)"
-            },
-            questionType: {
-              type: Type.STRING,
-              description: "O tipo de questão gerada ('multiple_choice' ou 'open')"
-            },
-            difficulty: { 
-              type: Type.STRING,
-              enum: ["Fácil", "Médio", "Difícil"],
-              description: "A dificuldade específica desta questão"
-            },
-            year: { type: Type.NUMBER },
-            source: { type: Type.STRING }
-          },
-          required: ["id", "subject", "topic", "text", "correctAnswer", "commentary", "difficulty", "year", "visualType"]
+            required: ["id", "subject", "topic", "text", "correctAnswer", "commentary", "difficulty", "year", "visualType"]
+          }
         }
       }
-    }
-  });
+    });
+  };
 
   try {
+    const response = await withRetry(generate);
     const text = response.text;
     if (!text) throw new Error("O modelo não retornou conteúdo.");
     const parsed = JSON.parse(text);
     return parsed.map((q: any) => {
-      // If questionType is mixed, we trust the AI to set questionType correctly in the JSON
-      // If it's not set or it's a specific type, we ensure it's consistent
       const qType = q.questionType || (q.options && q.options.length > 0 ? 'multiple_choice' : 'open');
       return { ...q, questionType: qType };
     });
@@ -141,8 +164,8 @@ export const gradeAnswerSheet = async (imageBase64: string, answerKey: string): 
   const apiKey = await getApiKey();
   const ai = new GoogleGenAI({ apiKey });
   
-  try {
-    const response = await ai.models.generateContent({
+  const generate = async () => {
+    return await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: [
         {
@@ -179,7 +202,10 @@ export const gradeAnswerSheet = async (imageBase64: string, answerKey: string): 
         responseMimeType: "application/json"
       }
     });
+  };
 
+  try {
+    const response = await withRetry(generate);
     const text = response.text;
     if (!text) throw new Error("Resposta vazia da IA");
     
@@ -194,8 +220,8 @@ export const autoGradeWithKey = async (imageBase64: string, answerKey: string): 
   const apiKey = await getApiKey();
   const ai = new GoogleGenAI({ apiKey });
   
-  try {
-    const response = await ai.models.generateContent({
+  const generate = async () => {
+    return await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: [
         {
@@ -225,7 +251,10 @@ export const autoGradeWithKey = async (imageBase64: string, answerKey: string): 
       ],
       config: { responseMimeType: "application/json" }
     });
+  };
 
+  try {
+    const response = await withRetry(generate);
     return JSON.parse(response.text || '{"studentAnswers":[], "score":0}');
   } catch (error) {
     console.error("Erro na correção automática:", error);

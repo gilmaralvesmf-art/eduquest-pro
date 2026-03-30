@@ -141,12 +141,23 @@ const SuperScanner: React.FC<SuperScannerProps> = ({ onClose }) => {
 
     } catch (err: any) {
       console.error(err);
-      setError("Erro ao processar correção. Tente novamente.");
+      let userMessage = "Erro ao processar correção. Tente novamente.";
+      const errorStr = JSON.stringify(err);
+      
+      if (errorStr.includes('503') || errorStr.includes('UNAVAILABLE')) {
+        userMessage = "O servidor de IA está com alta demanda. Por favor, aguarde alguns segundos e tente escanear novamente.";
+      } else if (errorStr.includes('429') || errorStr.includes('RESOURCE_EXHAUSTED')) {
+        userMessage = "Limite de requisições da IA atingido. Por favor, aguarde um instante e tente novamente.";
+      } else if (err.message) {
+        userMessage = err.message;
+      }
+      
+      setError(userMessage);
       setScanning(true);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [profile, user, navigate]);
 
   useEffect(() => {
     if (!scanning) return;

@@ -102,7 +102,18 @@ const AIStudio: React.FC = () => {
       }
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Ocorreu um erro inesperado ao gerar as questões.");
+      let userMessage = "Ocorreu um erro inesperado ao gerar as questões.";
+      const errorStr = JSON.stringify(err);
+      
+      if (errorStr.includes('503') || errorStr.includes('UNAVAILABLE')) {
+        userMessage = "O servidor de IA está com altíssima demanda no momento. Já estamos tentando novamente de forma automática, mas se o erro persistir, por favor aguarde 1 minuto e tente novamente.";
+      } else if (errorStr.includes('429') || errorStr.includes('RESOURCE_EXHAUSTED')) {
+        userMessage = "Limite de requisições da IA atingido. Por favor, aguarde um instante e tente novamente.";
+      } else if (err.message) {
+        userMessage = err.message;
+      }
+      
+      setError(userMessage);
     } finally {
       setLoading(false);
     }
@@ -110,6 +121,7 @@ const AIStudio: React.FC = () => {
 
   const handleReplaceQuestion = async (index: number) => {
     setReplacingIndex(index);
+    setError(null);
     try {
       // Generate just one new question
       // Use the same parameters but count = 1
@@ -122,7 +134,14 @@ const AIStudio: React.FC = () => {
       }
     } catch (err: any) {
       console.error(err);
-      setError("Falha ao substituir a questão. Tente novamente.");
+      let userMessage = "Falha ao substituir a questão. Tente novamente.";
+      const errorStr = JSON.stringify(err);
+      
+      if (errorStr.includes('503') || errorStr.includes('UNAVAILABLE')) {
+        userMessage = "O servidor de IA está ocupado. Por favor, tente substituir novamente em alguns segundos.";
+      }
+      
+      setError(userMessage);
     } finally {
       setReplacingIndex(null);
     }
