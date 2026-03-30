@@ -102,17 +102,19 @@ const AIStudio: React.FC = () => {
       }
     } catch (err: any) {
       console.error(err);
-      let userMessage = "Ocorreu um erro inesperado ao gerar as questões.";
-      const errorStr = JSON.stringify(err);
+      let userMessage = err.message || "Ocorreu um erro inesperado ao gerar as questões.";
       
-      if (errorStr.includes('503') || errorStr.includes('UNAVAILABLE')) {
-        userMessage = "O servidor de IA está com altíssima demanda no momento. Já estamos tentando novamente de forma automática, mas se o erro persistir, por favor aguarde 1 minuto e tente novamente.";
-      } else if (errorStr.includes('429') || errorStr.includes('RESOURCE_EXHAUSTED')) {
-        userMessage = "Limite de requisições da IA atingido. Por favor, aguarde um instante e tente novamente.";
-      } else if (err.message) {
-        userMessage = err.message;
+      // Se a mensagem ainda for um JSON (caso o service falhe em parsear), tenta limpar aqui também
+      if (userMessage.includes('{"error":')) {
+        try {
+          const jsonStr = userMessage.split('Falha ao gerar questões: ')[1] || userMessage;
+          const parsed = JSON.parse(jsonStr);
+          if (parsed.error && parsed.error.message) {
+            userMessage = `Falha ao gerar questões: ${parsed.error.message}`;
+          }
+        } catch (e) {}
       }
-      
+
       setError(userMessage);
     } finally {
       setLoading(false);

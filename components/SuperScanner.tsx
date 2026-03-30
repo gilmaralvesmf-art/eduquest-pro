@@ -141,15 +141,16 @@ const SuperScanner: React.FC<SuperScannerProps> = ({ onClose }) => {
 
     } catch (err: any) {
       console.error(err);
-      let userMessage = "Erro ao processar correção. Tente novamente.";
-      const errorStr = JSON.stringify(err);
+      let userMessage = err.message || "Erro ao processar correção. Tente novamente.";
       
-      if (errorStr.includes('503') || errorStr.includes('UNAVAILABLE')) {
-        userMessage = "O servidor de IA está com alta demanda. Por favor, aguarde alguns segundos e tente escanear novamente.";
-      } else if (errorStr.includes('429') || errorStr.includes('RESOURCE_EXHAUSTED')) {
-        userMessage = "Limite de requisições da IA atingido. Por favor, aguarde um instante e tente novamente.";
-      } else if (err.message) {
-        userMessage = err.message;
+      if (userMessage.includes('{"error":')) {
+        try {
+          const jsonStr = userMessage.split('Erro na correção automática: ')[1] || userMessage;
+          const parsed = JSON.parse(jsonStr);
+          if (parsed.error && parsed.error.message) {
+            userMessage = `Erro na correção: ${parsed.error.message}`;
+          }
+        } catch (e) {}
       }
       
       setError(userMessage);

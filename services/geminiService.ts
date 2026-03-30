@@ -29,21 +29,25 @@ const getApiKey = async (): Promise<string> => {
   throw new Error("Chave de API não encontrada. Por favor, verifique as configurações do ambiente.");
 };
 
-const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 2000): Promise<T> => {
+const withRetry = async <T>(fn: () => Promise<T>, retries = 4, delay = 3000): Promise<T> => {
   try {
     return await fn();
   } catch (error: any) {
-    const errorStr = JSON.stringify(error);
+    const message = error.message || "";
+    const errorStr = typeof error === 'string' ? error : JSON.stringify(error);
+    
     const isRetryable = 
+      message.includes('503') || 
+      message.includes('429') || 
+      message.includes('UNAVAILABLE') || 
+      message.includes('RESOURCE_EXHAUSTED') ||
       errorStr.includes('503') || 
       errorStr.includes('429') || 
       errorStr.includes('UNAVAILABLE') || 
-      errorStr.includes('RESOURCE_EXHAUSTED') ||
-      error.message?.includes('503') ||
-      error.message?.includes('429');
+      errorStr.includes('RESOURCE_EXHAUSTED');
 
     if (retries > 0 && isRetryable) {
-      console.warn(`Gemini API em alta demanda, tentando novamente em ${delay}ms... (${retries} tentativas restantes)`);
+      console.warn(`Gemini API em alta demanda ou limite atingido, tentando novamente em ${delay}ms... (${retries} tentativas restantes)`);
       await new Promise(resolve => setTimeout(resolve, delay));
       return withRetry(fn, retries - 1, delay * 2);
     }
@@ -156,7 +160,28 @@ export const generateQuestions = async (
     });
   } catch (error: any) {
     console.error("Erro ao processar JSON do Gemini:", error);
-    throw new Error(`Falha ao gerar questões: ${error.message}`);
+    
+    let errorMessage = error.message || "Erro desconhecido";
+    
+    // Tentar extrair mensagem amigável de erro JSON do Google
+    try {
+      if (errorMessage.startsWith('{')) {
+        const parsedError = JSON.parse(errorMessage);
+        if (parsedError.error) {
+          if (parsedError.error.code === 429) {
+            errorMessage = "Limite de uso da IA atingido (Quota Exceeded). Por favor, aguarde alguns segundos e tente novamente.";
+          } else if (parsedError.error.code === 503) {
+            errorMessage = "O serviço de IA está temporariamente indisponível devido à alta demanda. Tente novamente em instantes.";
+          } else {
+            errorMessage = parsedError.error.message || errorMessage;
+          }
+        }
+      }
+    } catch (e) {
+      // Se falhar ao parsear, mantém a mensagem original
+    }
+
+    throw new Error(`Falha ao gerar questões: ${errorMessage}`);
   }
 };
 
@@ -210,9 +235,27 @@ export const gradeAnswerSheet = async (imageBase64: string, answerKey: string): 
     if (!text) throw new Error("Resposta vazia da IA");
     
     return JSON.parse(text);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erro na chamada do Gemini:", error);
-    throw error;
+    
+    let errorMessage = error.message || "Erro desconhecido";
+    
+    try {
+      if (errorMessage.startsWith('{')) {
+        const parsedError = JSON.parse(errorMessage);
+        if (parsedError.error) {
+          if (parsedError.error.code === 429) {
+            errorMessage = "Limite de uso da IA atingido (Quota Exceeded). Por favor, aguarde alguns segundos e tente novamente.";
+          } else if (parsedError.error.code === 503) {
+            errorMessage = "O serviço de IA está temporariamente indisponível devido à alta demanda. Tente novamente em instantes.";
+          } else {
+            errorMessage = parsedError.error.message || errorMessage;
+          }
+        }
+      }
+    } catch (e) {}
+
+    throw new Error(`Falha na correção: ${errorMessage}`);
   }
 };
 
@@ -255,9 +298,29 @@ export const autoGradeWithKey = async (imageBase64: string, answerKey: string): 
 
   try {
     const response = await withRetry(generate);
-    return JSON.parse(response.text || '{"studentAnswers":[], "score":0}');
-  } catch (error) {
+    const text = response.text;
+    if (!text) throw new Error("Resposta vazia da IA");
+    return JSON.parse(text);
+  } catch (error: any) {
     console.error("Erro na correção automática:", error);
-    throw error;
+    
+    let errorMessage = error.message || "Erro desconhecido";
+    
+    try {
+      if (errorMessage.startsWith('{')) {
+        const parsedError = JSON.parse(errorMessage);
+        if (parsedError.error) {
+          if (parsedError.error.code === 429) {
+            errorMessage = "Limite de uso da IA atingido (Quota Exceeded). Por favor, aguarde alguns segundos e tente novamente.";
+          } else if (parsedError.error.code === 503) {
+            errorMessage = "O serviço de IA está temporariamente indisponível devido à alta demanda. Tente novamente em instantes.";
+          } else {
+            errorMessage = parsedError.error.message || errorMessage;
+          }
+        }
+      }
+    } catch (e) {}
+
+    throw new Error(`Erro na correção automática: ${errorMessage}`);
   }
 };
