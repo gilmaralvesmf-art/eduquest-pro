@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import kiwifyRouter from "./server/routes/kiwify";
+import kiwifyRouter from "./server/routes/kiwify.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
