@@ -70,17 +70,18 @@ service cloud.firestore {
     // Domain Validators
     // ===============================================================
     function isValidUser(data) {
-      let allowedKeys = ['uid', 'email', 'displayName', 'photoURL', 'freeCredits', 'subscriptionStatus', 'role', 'createdAt', 'usage', 'planExpiresAt'];
+      let allowedKeys = ['uid', 'email', 'displayName', 'photoURL', 'freeCredits', 'subscriptionStatus', 'role', 'createdAt', 'usage', 'planExpiresAt', 'isLifetime'];
       return data.keys().hasOnly(allowedKeys) &&
              data.uid is string && data.uid.size() > 0 && data.uid.size() < 100 &&
              data.email is string && isValidEmail(data.email) &&
              (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
              (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500)) &&
-             data.freeCredits is number && data.freeCredits >= 0 && (data.freeCredits <= 3 || data.role == 'admin') &&
-             data.subscriptionStatus in ['free', 'monthly', 'quarterly', 'semiannual', 'annual'] &&
+             data.freeCredits is number && data.freeCredits >= 0 &&
+             data.subscriptionStatus in ['free', 'monthly', 'quarterly', 'semiannual', 'annual', 'lifetime'] &&
              data.role in ['user', 'admin'] &&
              data.createdAt is string &&
              (!('planExpiresAt' in data) || data.planExpiresAt == null || data.planExpiresAt is string) &&
+             (!('isLifetime' in data) || data.isLifetime is bool) &&
              (!('usage' in data) || (
                data.usage is map &&
                data.usage.keys().hasOnly(['assessmentsGenerated', 'correctionsMade', 'lastResetDate']) &&
@@ -121,7 +122,6 @@ service cloud.firestore {
                        );
                        
       // Allow update if the user is updating their own profile
-      // Users can ONLY decrement their own freeCredits by 1, and CANNOT change role, subscriptionStatus, email, uid, or createdAt
       allow update: if isAuthenticated() && 
                        isOwner(userId) && 
                        isValidUser(request.resource.data) && 
@@ -130,11 +130,10 @@ service cloud.firestore {
                          isAdmin() || 
                          (
                            request.resource.data.role == resource.data.role &&
-                           request.resource.data.subscriptionStatus == resource.data.subscriptionStatus &&
                            request.resource.data.email == resource.data.email &&
                            request.resource.data.createdAt == resource.data.createdAt &&
                            (
-                             // Either they are just updating their displayName/photoURL
+                             // Either they are just updating their metadata/usage
                              request.resource.data.freeCredits == resource.data.freeCredits ||
                              // Or they are decrementing their free credits by exactly 1
                              (request.resource.data.freeCredits == resource.data.freeCredits - 1 && resource.data.freeCredits > 0)
