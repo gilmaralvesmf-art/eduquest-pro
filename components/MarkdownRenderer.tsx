@@ -25,7 +25,17 @@ const Mermaid = ({ chart }: { chart: string }) => {
       // Clear previous content
       ref.current.innerHTML = '<div class="flex items-center justify-center p-4 text-slate-400 text-xs animate-pulse">Renderizando diagrama...</div>';
 
-      mermaid.render(id, chart).then(({ svg }) => {
+      // Fix Mermaid syntax: wrap node labels in quotes if they contain special chars
+      // This handles cases like A[C(s) + H2] which cause parse errors in Mermaid
+      const fixedChart = chart.replace(/([a-zA-Z0-9_-]+)(\[|\(|\{)([^\]\)\}"\n]+)(\]|\)|\})/g, (match, nodeId, open, label, close) => {
+        // If label contains special chars (like parens, plus, math symbols) and isn't already quoted
+        if (/[()+$+\-*/=]/.test(label)) {
+          return `${nodeId}${open}"${label}"${close}`;
+        }
+        return match;
+      });
+
+      mermaid.render(id, fixedChart).then(({ svg }) => {
         if (isMounted && ref.current) {
           ref.current.innerHTML = svg;
           // Ensure SVG takes full width and is responsive
@@ -42,7 +52,7 @@ const Mermaid = ({ chart }: { chart: string }) => {
         if (isMounted && ref.current) {
           ref.current.innerHTML = `<div class="p-4 border border-red-200 bg-red-50 text-red-600 text-xs rounded-lg">
             <strong>Erro no diagrama:</strong> ${err.message}
-            <pre class="mt-2 text-[10px] overflow-auto max-h-24">${chart}</pre>
+            <pre class="mt-2 text-[10px] overflow-auto max-h-24">${fixedChart}</pre>
           </div>`;
         }
       });
@@ -72,7 +82,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
     .replace(/\\ce\s*\{([^}]+)\}/g, '$1')
     .replace(/\\ce\s+([^\s$]+)/g, '$1')
     // Fix broken table syntax (double pipes or missing newlines)
-    .replace(/\|\|/g, '|\n|')
+    .replace(/\s*\|\|\s*/g, '|\n|')
     // Fix common missing backslashes for symbols
     .replace(/(?<!\\)Delta/g, '\\Delta')
     .replace(/(?<!\\)rightarrow/g, '\\rightarrow')

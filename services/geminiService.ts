@@ -96,6 +96,8 @@ export const generateQuestions = async (
       - Elementos Visuais e Gráficos: É OBRIGATÓRIO incluir elementos visuais (tabelas ou diagramas) em pelo menos 60% das questões.
       - Para tabelas: Use Markdown padrão.
       - Para figuras, diagramas e gráficos: Use OBRIGATORIAMENTE blocos de código \`\`\`mermaid. 
+      - IMPORTANTE: Sempre envolva o texto dos nós (labels) em aspas duplas se contiverem caracteres especiais, parênteses, sinais de mais/menos ou matemática. 
+      - Exemplo: A["C(s) + O2(g)"] --> B["CO2(g)"].
       - Exemplos de uso: 
         - Biologia: Ciclos, cadeias alimentares, organelas (usando fluxogramas).
         - Química: Processos industriais, ciclos termoquímicos, modelos atômicos simples.
