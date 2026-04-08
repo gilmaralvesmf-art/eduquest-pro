@@ -131,8 +131,8 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
     const prevMode = isTeacherMode;
     setIsTeacherMode(mode === 'teacher');
     
-    // Wait for state update and re-render
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Wait for state update and re-render (Mermaid diagrams can take a moment)
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     try {
       const element = examRef.current;
@@ -167,6 +167,10 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
       .replace(/rightarrow/g, '→')
       .replace(/\\Delta/g, 'Δ')
       .replace(/Delta/g, 'Δ')
+      .replace(/\\text\{kJ\}/g, 'kJ')
+      .replace(/textkJ/g, 'kJ')
+      .replace(/\\circ/g, '°')
+      .replace(/circ/g, '°')
       .replace(/\\ce\{([^}]+)\}/g, '$1')
       .replace(/\\text\{([^}]+)\}/g, '$1')
       .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2')
@@ -244,10 +248,22 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
               ];
 
               if (q.visualContent && q.visualType !== 'none') {
+                const isMermaid = q.visualContent.includes('```mermaid') || q.visualType === 'graph';
                 questionElements.push(new Paragraph({
                   children: [
-                    new TextRun({ text: "[Conteúdo Visual/Tabela]: ", bold: true, italics: true, color: "666666" }),
-                    new TextRun({ text: cleanTextForWord(q.visualContent), italics: true, color: "666666" }),
+                    new TextRun({ 
+                      text: isMermaid ? "[Diagrama/Gráfico]: " : "[Tabela/Conteúdo Visual]: ", 
+                      bold: true, 
+                      italics: true, 
+                      color: "666666" 
+                    }),
+                    new TextRun({ 
+                      text: isMermaid 
+                        ? "Este diagrama deve ser visualizado na versão PDF ou no Portal EduQuest Pro." 
+                        : cleanTextForWord(q.visualContent), 
+                      italics: true, 
+                      color: "666666" 
+                    }),
                   ],
                   spacing: { before: 200, after: 200 },
                   indent: { left: 720 },

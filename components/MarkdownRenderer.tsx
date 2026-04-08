@@ -8,30 +8,49 @@ import mermaid from 'mermaid';
 
 mermaid.initialize({
   startOnLoad: false,
-  theme: 'default',
+  theme: 'neutral',
   securityLevel: 'loose',
+  fontFamily: 'Inter, sans-serif',
+  fontSize: 14,
 });
 
 const Mermaid = ({ chart }: { chart: string }) => {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let isMounted = true;
     if (ref.current && chart) {
       const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Clear previous content
+      ref.current.innerHTML = '<div class="flex items-center justify-center p-4 text-slate-400 text-xs animate-pulse">Renderizando diagrama...</div>';
+
       mermaid.render(id, chart).then(({ svg }) => {
-        if (ref.current) {
+        if (isMounted && ref.current) {
           ref.current.innerHTML = svg;
+          // Ensure SVG takes full width and is responsive
+          const svgElement = ref.current.querySelector('svg');
+          if (svgElement) {
+            svgElement.style.maxWidth = '100%';
+            svgElement.style.height = 'auto';
+            svgElement.style.display = 'block';
+            svgElement.style.margin = '0 auto';
+          }
         }
       }).catch(err => {
         console.error("Mermaid rendering error:", err);
-        if (ref.current) {
-          ref.current.innerHTML = `<div class="text-red-500 text-xs">Erro ao renderizar diagrama: ${err.message}</div>`;
+        if (isMounted && ref.current) {
+          ref.current.innerHTML = `<div class="p-4 border border-red-200 bg-red-50 text-red-600 text-xs rounded-lg">
+            <strong>Erro no diagrama:</strong> ${err.message}
+            <pre class="mt-2 text-[10px] overflow-auto max-h-24">${chart}</pre>
+          </div>`;
         }
       });
     }
+    return () => { isMounted = false; };
   }, [chart]);
 
-  return <div ref={ref} className="flex justify-center my-6 overflow-x-auto" />;
+  return <div ref={ref} className="flex justify-center my-8 bg-white p-4 rounded-xl border border-slate-100 shadow-sm overflow-x-auto" />;
 };
 
 interface MarkdownRendererProps {
@@ -39,18 +58,29 @@ interface MarkdownRendererProps {
 }
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
+  // If the content looks like a mermaid chart but isn't wrapped in code blocks, wrap it
+  let processedContent = content;
+  if (
+    (content.includes('graph ') || content.includes('pie') || content.includes('sequenceDiagram') || content.includes('xychart-beta')) && 
+    !content.includes('```mermaid')
+  ) {
+    processedContent = `\`\`\`mermaid\n${content}\n\`\`\``;
+  }
+
   // Remove \ce commands that are not supported by default KaTeX without mhchem extension
-  // Matches \ce{...} and \ce ...
-  const cleanContent = content
+  const cleanContent = processedContent
     .replace(/\\ce\s*\{([^}]+)\}/g, '$1')
     .replace(/\\ce\s+([^\s$]+)/g, '$1')
-    // Fix common missing backslashes or delimiters for Delta and rightarrow
-    // If we see "rightarrow" or "Delta" not preceded by a backslash and not inside $...$
-    .replace(/(?<![\\\$])rightarrow(?![^\$]*\$)/g, '$\\rightarrow$')
-    .replace(/(?<![\\\$])Delta(?![^\$]*\$)/g, '$\\Delta$')
-    // If we see "\rightarrow" or "\Delta" not inside $...$
-    .replace(/(?<![\$])\\rightarrow(?![^\$]*\$)/g, '$\\rightarrow$')
-    .replace(/(?<![\$])\\Delta(?![^\$]*\$)/g, '$\\Delta$');
+    // Fix broken table syntax (double pipes or missing newlines)
+    .replace(/\|\|/g, '|\n|')
+    // Fix common missing backslashes for symbols
+    .replace(/(?<!\\)Delta/g, '\\Delta')
+    .replace(/(?<!\\)rightarrow/g, '\\rightarrow')
+    .replace(/(?<!\\)textkJ/g, '\\text{kJ}')
+    .replace(/(?<!\\)circ/g, '\\circ')
+    // Ensure symbols are wrapped in $ if they aren't already
+    // We look for \Delta, \rightarrow, etc. that are NOT inside $...$
+    .replace(/(?<![\$])(\\Delta|\\rightarrow|\\text\{kJ\}|\\circ)(?![^\$]*\$)/g, '$$$1$');
 
   return (
     <ReactMarkdown
