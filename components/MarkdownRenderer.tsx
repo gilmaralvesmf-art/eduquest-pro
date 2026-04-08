@@ -43,7 +43,14 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
   // Matches \ce{...} and \ce ...
   const cleanContent = content
     .replace(/\\ce\s*\{([^}]+)\}/g, '$1')
-    .replace(/\\ce\s+([^\s$]+)/g, '$1');
+    .replace(/\\ce\s+([^\s$]+)/g, '$1')
+    // Fix common missing backslashes or delimiters for Delta and rightarrow
+    // If we see "rightarrow" or "Delta" not preceded by a backslash and not inside $...$
+    .replace(/(?<![\\\$])rightarrow(?![^\$]*\$)/g, '$\\rightarrow$')
+    .replace(/(?<![\\\$])Delta(?![^\$]*\$)/g, '$\\Delta$')
+    // If we see "\rightarrow" or "\Delta" not inside $...$
+    .replace(/(?<![\$])\\rightarrow(?![^\$]*\$)/g, '$\\rightarrow$')
+    .replace(/(?<![\$])\\Delta(?![^\$]*\$)/g, '$\\Delta$');
 
   return (
     <ReactMarkdown

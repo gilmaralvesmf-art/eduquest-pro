@@ -94,7 +94,10 @@ export const generateQuestions = async (
       - Comentário: Forneça uma explicação detalhada.
       - Qualidade: Siga o padrão rigoroso das bancas solicitadas.
       - Elementos Visuais e Gráficos: Se o assunto permitir, inclua tabelas em Markdown com o conteúdo das colunas centralizado (ex: |:---:|). Para gráficos perfeitos, fluxogramas ou diagramas, use blocos de código \`\`\`mermaid com sintaxe correta e visual limpo.
-      - Formatação Matemática e Química: Use OBRIGATORIAMENTE LaTeX para fórmulas matemáticas e químicas. Use \`$$\` para blocos e \`$\` para inline. NÃO USE o comando \`\\ce{}\` para química, escreva as fórmulas químicas usando formatação matemática padrão do LaTeX (exemplo: \`$H_2O$\`, \`$X^{2+}$\`). NUNCA use caracteres unicode puros para fórmulas complexas, use SEMPRE LaTeX.
+      - Formatação Matemática e Química: Use OBRIGATORIAMENTE LaTeX para fórmulas matemáticas e químicas. Use \`$$\` para blocos e \`$\` para inline.
+      - IMPORTANTE: Toda e qualquer fórmula, símbolo matemático (como \Delta, \pi, \infty) ou símbolo de reação (como \rightarrow, \rightleftharpoons) DEVE estar entre cifrões ($) e usar a barra invertida (\) corretamente.
+      - Exemplo: Use $\Delta H$ em vez de Delta H ou \Delta H. Use $A \rightarrow B$ em vez de A rightarrow B.
+      - NÃO USE o comando \`\\ce{}\` para química, escreva as fórmulas químicas usando formatação matemática padrão do LaTeX (exemplo: \`$H_2O$\`, \`$X^{2+}$\`). NUNCA use caracteres unicode puros para fórmulas complexas, use SEMPRE LaTeX.
       
       Retorne APENAS o JSON seguindo o esquema fornecido, sem textos explicativos antes ou depois.`,
       config: {

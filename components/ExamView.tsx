@@ -164,7 +164,9 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
     if (!text) return "";
     return text
       .replace(/\\rightarrow/g, '→')
+      .replace(/rightarrow/g, '→')
       .replace(/\\Delta/g, 'Δ')
+      .replace(/Delta/g, 'Δ')
       .replace(/\\ce\{([^}]+)\}/g, '$1')
       .replace(/\\text\{([^}]+)\}/g, '$1')
       .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2')
