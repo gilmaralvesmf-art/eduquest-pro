@@ -54,29 +54,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             if (docSnap.exists()) {
               const data = docSnap.data() as UserProfile;
-              
+              let needsUpdate = false;
+              const updates: any = {};
+
+              // Initialize missing fields for existing users
+              if (!data.subscriptionStatus) {
+                data.subscriptionStatus = 'free';
+                updates.subscriptionStatus = 'free';
+                needsUpdate = true;
+              }
+              if (data.freeCredits === undefined) {
+                data.freeCredits = 3;
+                updates.freeCredits = 3;
+                needsUpdate = true;
+              }
+              if (!data.usage) {
+                data.usage = {
+                  assessmentsGenerated: 0,
+                  correctionsMade: 0,
+                  lastResetDate: new Date().toISOString()
+                };
+                updates.usage = data.usage;
+                needsUpdate = true;
+              }
+              if (!data.role) {
+                data.role = 'user';
+                updates.role = 'user';
+                needsUpdate = true;
+              }
+
               // Auto-upgrade creator to admin with lifetime credits
               if (currentUser.email === 'gilmaralvesmf@gmail.com' && (data.role !== 'admin' || data.subscriptionStatus !== 'lifetime' || !data.isLifetime)) {
-                await updateDoc(userRef, {
-                  role: 'admin',
-                  subscriptionStatus: 'lifetime',
-                  isLifetime: true,
-                  freeCredits: 999999999,
-                  planExpiresAt: null
-                });
-                // The snapshot listener will trigger again with updated data
-                return; 
+                updates.role = 'admin';
+                updates.subscriptionStatus = 'lifetime';
+                updates.isLifetime = true;
+                updates.freeCredits = 999999999;
+                updates.planExpiresAt = null;
+                needsUpdate = true;
               }
 
               // Auto-upgrade igoraquinodepinho@gmail.com to annual
               if (currentUser.email === 'igoraquinodepinho@gmail.com' && data.subscriptionStatus !== 'annual') {
                 const oneYearFromNow = new Date();
                 oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
-                await updateDoc(userRef, {
-                  subscriptionStatus: 'annual',
-                  planExpiresAt: oneYearFromNow.toISOString(),
-                  freeCredits: 999999
-                });
+                updates.subscriptionStatus = 'annual';
+                updates.planExpiresAt = oneYearFromNow.toISOString();
+                updates.freeCredits = 999999;
+                needsUpdate = true;
+              }
+
+              if (needsUpdate) {
+                await updateDoc(userRef, updates);
+                // The snapshot listener will trigger again
                 return;
               }
 

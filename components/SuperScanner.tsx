@@ -57,22 +57,23 @@ const SuperScanner: React.FC<SuperScannerProps> = ({ onClose }) => {
     if (profile) {
       const { subscriptionStatus, freeCredits, usage } = profile;
       
-      if (subscriptionStatus === 'free' && freeCredits <= 0) {
-        navigate('/pricing');
-        return;
-      }
+      if (subscriptionStatus === 'free') {
+        if (freeCredits <= 0) {
+          setError("Você atingiu o limite de 3 correções gratuitas. Assine um de nossos planos para continuar transformando sua rotina: Mensal (R$ 39,90), Trimestral (R$ 29,90/mês), Semestral (R$ 24,90/mês) ou Anual (R$ 19,90/mês).");
+          setScanning(false);
+          return;
+        }
+      } else if (subscriptionStatus !== 'lifetime' && profile.role !== 'admin') {
+        const limits = {
+          monthly: 150,
+          quarterly: 300,
+          semiannual: 500,
+          annual: 800
+        };
 
-      const limits = {
-        monthly: 150,
-        quarterly: 300,
-        semiannual: 500,
-        annual: 800
-      };
-
-      if (subscriptionStatus !== 'free' && profile.role !== 'admin') {
         const limit = limits[subscriptionStatus as keyof typeof limits] || 0;
-        if (usage?.correctionsMade >= limit) {
-           setError(`Você atingiu o limite de ${limit} correções do seu plano ${subscriptionStatus}.`);
+        if (limit > 0 && (usage?.correctionsMade || 0) >= limit) {
+           setError(`Você atingiu o limite de ${limit} correções do seu plano ${subscriptionStatus}. Assine um plano superior para continuar.`);
            setScanning(false);
            return;
         }
@@ -332,12 +333,22 @@ const SuperScanner: React.FC<SuperScannerProps> = ({ onClose }) => {
               </div>
               <h3 className="text-lg font-bold text-slate-900 mb-2">Ops! Algo deu errado</h3>
               <p className="text-slate-500 text-sm mb-8">{error}</p>
-              <button 
-                onClick={reset}
-                className="w-full bg-slate-800 text-white py-4 rounded-2xl font-bold hover:bg-slate-900 transition-all"
-              >
-                Tentar Novamente
-              </button>
+              <div className="flex flex-col gap-3 w-full">
+                {error?.includes('limite') && (
+                  <button 
+                    onClick={() => navigate('/pricing')}
+                    className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg"
+                  >
+                    Ver Planos de Assinatura
+                  </button>
+                )}
+                <button 
+                  onClick={reset}
+                  className="w-full bg-slate-800 text-white py-4 rounded-2xl font-bold hover:bg-slate-900 transition-all"
+                >
+                  Tentar Novamente
+                </button>
+              </div>
             </div>
           )}
         </div>

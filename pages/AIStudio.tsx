@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { BrainCircuit, Sparkles, Send, Loader2, CheckCircle2, Clipboard, FileText, QrCode, Download, Printer, Camera, AlertCircle, ChevronRight, History, Trash2, X } from 'lucide-react';
+import { BrainCircuit, Sparkles, Send, Loader2, CheckCircle2, Clipboard, FileText, QrCode, Download, Printer, Camera, AlertCircle, ChevronRight, History, Trash2, X, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import remarkGfm from 'remark-gfm';
@@ -22,7 +22,8 @@ const AIStudio: React.FC = () => {
   const navigate = useNavigate();
   const [subject, setSubject] = useState('Matemática');
   const [topic, setTopic] = useState('');
-  const [board, setBoard] = useState('ENEM');
+  const [boards, setBoards] = useState<string[]>(['ENEM']);
+  const [isBoardDropdownOpen, setIsBoardDropdownOpen] = useState(false);
   const [difficulty, setDifficulty] = useState<Difficulty>(Difficulty.MEDIUM);
   const [count, setCount] = useState(5);
   const [questionType, setQuestionType] = useState<'multiple_choice' | 'open' | 'mixed'>('multiple_choice');
@@ -43,14 +44,12 @@ const AIStudio: React.FC = () => {
     if (profile) {
       const { subscriptionStatus, freeCredits, usage } = profile;
       
-      if (subscriptionStatus === 'free' && freeCredits <= 0) {
-        navigate('/pricing');
-        return;
-      }
-
-      if (subscriptionStatus === 'lifetime' || profile.role === 'admin') {
-        // Unlimited access
-      } else {
+      if (subscriptionStatus === 'free') {
+        if (freeCredits <= 0) {
+          setError("Você atingiu o limite de 3 avaliações gratuitas. Assine um de nossos planos para continuar transformando sua rotina: Mensal (R$ 39,90), Trimestral (R$ 29,90/mês), Semestral (R$ 24,90/mês) ou Anual (R$ 19,90/mês).");
+          return;
+        }
+      } else if (subscriptionStatus !== 'lifetime' && profile.role !== 'admin') {
         const limits = {
           monthly: 15,
           quarterly: 25,
@@ -59,8 +58,8 @@ const AIStudio: React.FC = () => {
         };
 
         const limit = limits[subscriptionStatus as keyof typeof limits] || 0;
-        if (usage?.assessmentsGenerated >= limit) {
-           setError(`Você atingiu o limite de ${limit} avaliações do seu plano ${subscriptionStatus}.`);
+        if (limit > 0 && (usage?.assessmentsGenerated || 0) >= limit) {
+           setError(`Você atingiu o limite de ${limit} avaliações do seu plano ${subscriptionStatus}. Assine um plano superior para continuar.`);
            return;
         }
       }
@@ -70,14 +69,14 @@ const AIStudio: React.FC = () => {
     setError(null);
     setShowExam(false);
     try {
-      const result = await generateQuestions(subject, topic, count, difficulty, board, questionType);
+      const result = await generateQuestions(subject, topic, count, difficulty, boards, questionType);
       if (result && result.length > 0) {
         setQuestions(result);
         // Save to storage
         storageService.saveAssessment({
           subject,
           topic,
-          board,
+          board: boards.join(', '),
           difficulty,
           questions: result
         });
@@ -128,7 +127,7 @@ const AIStudio: React.FC = () => {
       // Generate just one new question
       // Use the same parameters but count = 1
       // If questionType is mixed, we'll just get one of either
-      const result = await generateQuestions(subject, topic, 1, difficulty, board, questionType);
+      const result = await generateQuestions(subject, topic, 1, difficulty, boards, questionType);
       if (result && result.length > 0) {
         const newQuestions = [...questions];
         newQuestions[index] = result[0];
@@ -174,7 +173,7 @@ const AIStudio: React.FC = () => {
       <ExamView 
         subject={subject}
         topic={topic}
-        board={board}
+        board={boards.join(', ')}
         questions={questions}
         onBack={() => setShowExam(false)}
       />
@@ -289,43 +288,39 @@ const AIStudio: React.FC = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Estilo da Banca</label>
-                <select 
-                  value={board}
-                  onChange={(e) => setBoard(e.target.value)}
-                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:border-indigo-600 focus:bg-white outline-none transition-all appearance-none"
+              <div className="space-y-2 relative">
+                <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Estilo das Bancas</label>
+                <div 
+                  onClick={() => setIsBoardDropdownOpen(!isBoardDropdownOpen)}
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 hover:border-indigo-600 hover:bg-white transition-all cursor-pointer flex justify-between items-center"
                 >
-                  <optgroup label="Militares">
-                    <option>ITA</option>
-                    <option>IME</option>
-                    <option>EsPCEx</option>
-                    <option>ESA</option>
-                    <option>Colégio Naval</option>
-                    <option>EPCAR</option>
-                    <option>AFA</option>
-                    <option>EFOMM</option>
-                    <option>EAM</option>
-                  </optgroup>
-                  <optgroup label="Vestibulares">
-                    <option>ENEM</option>
-                    <option>FUVEST</option>
-                    <option>UNICAMP</option>
-                    <option>UNESP (VUNESP)</option>
-                    <option>UERJ</option>
-                    <option>UFRGS</option>
-                    <option>UFSC</option>
-                    <option>URCA</option>
-                    <option>UECE</option>
-                    <option>UPE</option>
-                    <option>UFPE</option>
-                  </optgroup>
-                  <optgroup label="Concursos">
-                    <option>FGV</option>
-                    <option>FCC</option>
-                    <option>Cebraspe</option>
-                  </optgroup>
-                </select>
+                  <span className="truncate">{boards.length > 0 ? boards.join(', ') : 'Selecione as bancas'}</span>
+                  <ChevronDown size={20} className={`text-slate-400 transition-transform ${isBoardDropdownOpen ? 'rotate-180' : ''}`} />
+                </div>
+                
+                {isBoardDropdownOpen && (
+                  <div className="absolute z-50 w-full mt-2 bg-white border-2 border-slate-100 rounded-2xl shadow-xl max-h-60 overflow-y-auto p-2">
+                    {[
+                      { label: 'Militares', options: ['ITA', 'IME', 'EsPCEx', 'ESA', 'Colégio Naval', 'EPCAR', 'AFA', 'EFOMM', 'EAM'] },
+                      { label: 'Vestibulares', options: ['ENEM', 'FUVEST', 'UNICAMP', 'UNESP (VUNESP)', 'UERJ', 'UFRGS', 'UFSC', 'URCA', 'UECE', 'UPE', 'UFPE'] },
+                      { label: 'Concursos', options: ['FGV', 'FCC', 'Cebraspe'] }
+                    ].map((group) => (
+                      <div key={group.label} className="mb-2">
+                        <div className="px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 rounded-lg mb-1">
+                          {group.label}
+                        </div>
+                        {group.options.map(opt => (
+                          <label key={opt} className="flex items-center px-3 py-2 hover:bg-indigo-50 rounded-xl cursor-pointer transition-colors group">
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center mr-3 transition-colors ${boards.includes(opt) ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300 group-hover:border-indigo-400'}`}>
+                              {boards.includes(opt) && <CheckCircle2 size={14} className="text-white" />}
+                            </div>
+                            <span className={`text-sm font-bold ${boards.includes(opt) ? 'text-indigo-900' : 'text-slate-600'}`}>{opt}</span>
+                          </label>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -391,7 +386,17 @@ const AIStudio: React.FC = () => {
                 className="mt-6 p-4 bg-red-50 border-2 border-red-100 rounded-2xl flex gap-3 items-start"
               >
                 <AlertCircle className="text-red-500 flex-shrink-0" size={20} />
-                <p className="text-xs text-red-700 font-bold leading-relaxed">{error}</p>
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs text-red-700 font-bold leading-relaxed">{error}</p>
+                  {error?.includes('limite') && (
+                    <button 
+                      onClick={() => navigate('/pricing')}
+                      className="text-[10px] bg-red-600 text-white px-3 py-1 rounded-lg w-fit hover:bg-red-700 transition-colors uppercase tracking-widest font-black"
+                    >
+                      Ver Planos de Assinatura
+                    </button>
+                  )}
+                </div>
               </motion.div>
             )}
           </div>
@@ -399,13 +404,14 @@ const AIStudio: React.FC = () => {
 
         {/* Right Column: Results */}
         <div className="lg:col-span-8">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="popLayout">
             {questions.length > 0 ? (
               <motion.div 
                 key="results"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
                 className="space-y-8"
               >
                 <div className="flex items-center justify-between px-2">
@@ -424,7 +430,7 @@ const AIStudio: React.FC = () => {
                 <div className="grid grid-cols-1 gap-6">
                   {questions.map((q, idx) => (
                     <motion.div 
-                      key={idx}
+                      key={q.id || `q-${idx}`}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.05 }}
@@ -437,7 +443,7 @@ const AIStudio: React.FC = () => {
                           </span>
                           <div className="flex flex-col">
                             <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">{q.difficulty}</span>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{board} • {subject} • {q.questionType === 'multiple_choice' ? 'Múltipla Escolha' : 'Discursiva'}</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{boards.join(', ')} • {subject} • {q.questionType === 'multiple_choice' ? 'Múltipla Escolha' : 'Discursiva'}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -594,8 +600,10 @@ const AIStudio: React.FC = () => {
             ) : (
               <motion.div 
                 key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
                 className="h-full min-h-[600px] flex flex-col items-center justify-center bg-white rounded-[3rem] border-4 border-dashed border-slate-100 p-12 text-center"
               >
                 <div className="w-24 h-24 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-200 mb-8 animate-bounce">

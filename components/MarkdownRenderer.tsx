@@ -16,29 +16,53 @@ mermaid.initialize({
 
 const Mermaid = ({ chart }: { chart: string }) => {
   const ref = useRef<HTMLDivElement>(null);
+  const lastChart = useRef<string>('');
 
   useEffect(() => {
     let isMounted = true;
-    if (ref.current && chart) {
-      const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Clean up chart content from common AI prefixes that break Mermaid
+    let cleanChart = chart.trim();
+    
+    // Remove common AI prefixes and fix double keywords
+    cleanChart = cleanChart
+      .replace(/^(Diagrama|Gráfico|Chart|Diagram|Figura|Figure|Conteúdo Visual|Visual Content|Mermaid):\s*/i, '')
+      .replace(/^graph\s+chart\s+/i, '')
+      .replace(/^graph\s+TD\s+graph\s+TD/i, 'graph TD')
+      .replace(/^graphchart/i, '')
+      .replace(/^graph\s+xychart-beta/i, 'xychart-beta')
+      .replace(/^chart\s+xychart-beta/i, 'xychart-beta')
+      .replace(/^graph\s+pie/i, 'pie')
+      .replace(/^graph\s+sequenceDiagram/i, 'sequenceDiagram');
+
+    // If the chart hasn't changed, don't re-render to avoid flickering
+    if (lastChart.current === cleanChart) return;
+    const isFirstRender = lastChart.current === '';
+    lastChart.current = cleanChart;
+
+    if (ref.current && cleanChart) {
+      const id = `mermaid-${Math.random().toString(36).substring(2, 11)}`;
       
-      // Clear previous content
-      ref.current.innerHTML = '<div class="flex items-center justify-center p-4 text-slate-400 text-xs animate-pulse">Renderizando diagrama...</div>';
+      // Remove loading text to avoid flicker
+      // We just leave the container empty until the SVG is ready
 
       // Fix Mermaid syntax: wrap node labels in quotes if they contain special chars
-      // This handles cases like A[C(s) + H2] which cause parse errors in Mermaid
-      const fixedChart = chart.replace(/([a-zA-Z0-9_-]+)(\[|\(|\{)([^\]\)\}"\n]+)(\]|\)|\})/g, (match, nodeId, open, label, close) => {
-        // If label contains special chars (like parens, plus, math symbols) and isn't already quoted
-        if (/[()+$+\-*/=]/.test(label)) {
-          return `${nodeId}${open}"${label}"${close}`;
-        }
-        return match;
-      });
+      // Only apply to graph/flowchart, not xychart or pie
+      let fixedChart = cleanChart;
+      if (cleanChart.startsWith('graph') || cleanChart.startsWith('flowchart')) {
+        fixedChart = cleanChart.replace(/([a-zA-Z0-9_-]+)(\[|\(|\{)([^\]\)\}"\n]+)(\]|\)|\})/g, (match, nodeId, open, label, close) => {
+          if (/[()+$+\-*/=]/.test(label)) {
+            return `${nodeId}${open}"${label}"${close}`;
+          }
+          return match;
+        });
+      }
 
+      // Instead of clearing immediately, we'll render to a temporary div
+      // to avoid the "flash" of empty content
       mermaid.render(id, fixedChart).then(({ svg }) => {
         if (isMounted && ref.current) {
           ref.current.innerHTML = svg;
-          // Ensure SVG takes full width and is responsive
           const svgElement = ref.current.querySelector('svg');
           if (svgElement) {
             svgElement.style.maxWidth = '100%';
@@ -60,14 +84,14 @@ const Mermaid = ({ chart }: { chart: string }) => {
     return () => { isMounted = false; };
   }, [chart]);
 
-  return <div ref={ref} className="flex justify-center my-8 bg-white p-4 rounded-xl border border-slate-100 shadow-sm overflow-x-auto" />;
+  return <div ref={ref} className="flex justify-center my-8 bg-white p-4 rounded-xl border border-slate-100 shadow-sm overflow-x-auto min-h-[100px]" />;
 };
 
 interface MarkdownRendererProps {
   content: string;
 }
 
-export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
+export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({ content }) => {
   // If the content looks like a mermaid chart but isn't wrapped in code blocks, wrap it
   let processedContent = content;
   if (
@@ -128,4 +152,4 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
       {cleanContent}
     </ReactMarkdown>
   );
-};
+});

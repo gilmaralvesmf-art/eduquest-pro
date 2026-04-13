@@ -60,21 +60,21 @@ export const generateQuestions = async (
   topic: string, 
   count: number, 
   difficulty: Difficulty,
-  board?: string,
+  boards?: string[],
   questionType: 'multiple_choice' | 'open' | 'mixed' = 'multiple_choice'
 ): Promise<Question[]> => {
   const apiKey = await getApiKey();
   const ai = new GoogleGenAI({ apiKey });
   
-  const boardPrompt = board ? ` no estilo da banca ${board}` : "";
+  const boardPrompt = boards && boards.length > 0 ? ` no estilo das bancas: ${boards.join(', ')}` : "";
   
   let formatPrompt = "";
   if (questionType === 'multiple_choice') {
-    formatPrompt = `- Formato: Cada questão deve ter um enunciado claro e 5 alternativas (A, B, C, D, E).\n    - Resposta: Indique a alternativa correta (texto completo da alternativa).`;
+    formatPrompt = `- Formato: Cada questão deve ter um enunciado claro e 5 alternativas (A, B, C, D, E).\n    - Resposta: Indique a alternativa correta (texto completo da alternativa).\n    - IMPORTANTE: O campo 'options' DEVE conter exatamente 5 itens e 'questionType' DEVE ser 'multiple_choice'.`;
   } else if (questionType === 'open') {
-    formatPrompt = `- Formato: Cada questão deve ter um enunciado claro para uma questão discursiva/aberta.\n    - Resposta: Forneça um padrão de resposta esperado ou espelho de correção detalhado.`;
+    formatPrompt = `- Formato: Cada questão deve ter um enunciado claro para uma questão discursiva/aberta.\n    - Resposta: Forneça um padrão de resposta esperado ou espelho de correção detalhado.\n    - IMPORTANTE: O campo 'options' DEVE ser uma lista vazia [] e 'questionType' DEVE ser 'open'.`;
   } else {
-    formatPrompt = `- Formato: Mescle questões de múltipla escolha (com 5 alternativas) e questões discursivas/abertas.\n    - Resposta: Para múltipla escolha, indique a alternativa correta. Para discursivas, forneça o padrão de resposta.`;
+    formatPrompt = `- Formato: Mescle questões de múltipla escolha (com 5 alternativas) e questões discursivas/abertas.\n    - Resposta: Para múltipla escolha, indique a alternativa correta. Para discursivas, forneça o padrão de resposta.\n    - IMPORTANTE: Para questões de múltipla escolha, 'options' deve ter 5 itens e 'questionType' deve ser 'multiple_choice'. Para questões discursivas, 'options' deve ser vazio [] e 'questionType' deve ser 'open'.`;
   }
 
   const difficultyPrompt = difficulty === Difficulty.MIXED 
@@ -105,6 +105,7 @@ export const generateQuestions = async (
         - Matemática: Gráficos de funções (usando xychart-beta), diagramas de Venn.
         - Geografia/História: Linhas do tempo, fluxos migratórios.
       - IMPORTANTE: O conteúdo visual deve ser rico e ajudar na resolução da questão. Coloque o código Mermaid ou a Tabela no campo "visualContent".
+      - NÃO inclua títulos ou prefixos como "Diagrama:", "Gráfico:", "graph", "chart" ou "Conteúdo Visual:" dentro do campo "visualContent". O campo deve conter APENAS o código Mermaid puro ou a Tabela Markdown.
       - Se for um diagrama Mermaid, o "visualType" deve ser "graph". Se for tabela, "table".
       - Formatação Matemática e Química: Use OBRIGATORIAMENTE LaTeX.
       - IMPORTANTE: Toda e qualquer fórmula, símbolo matemático (como \Delta, \pi, \infty, \circ) ou símbolo de reação (como \rightarrow, \rightleftharpoons) DEVE estar entre cifrões ($) e usar a barra invertida (\) corretamente.
