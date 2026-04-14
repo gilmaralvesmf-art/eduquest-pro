@@ -62,7 +62,24 @@ const Correction: React.FC = () => {
         throw new Error("Não foi possível capturar a imagem da câmera. Verifique as permissões.");
       }
 
-      const gradingResult = await gradeAnswerSheet(imageSrc, data);
+      // Resize image to improve speed
+      const img = new Image();
+      img.src = imageSrc;
+      await new Promise((resolve) => (img.onload = resolve));
+      
+      const canvas = document.createElement('canvas');
+      const MAX_WIDTH = 800;
+      const scale = MAX_WIDTH / img.width;
+      canvas.width = MAX_WIDTH;
+      canvas.height = img.height * scale;
+      
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error("Erro ao processar imagem");
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      
+      const resizedImageSrc = canvas.toDataURL('image/jpeg', 0.7);
+
+      const gradingResult = await gradeAnswerSheet(resizedImageSrc, data);
       setResult(gradingResult);
       setIsScanning(false);
 
@@ -189,7 +206,7 @@ const Correction: React.FC = () => {
               className="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-xl flex items-center justify-center gap-2 text-sm"
             >
               {loading ? <Loader2 className="animate-spin" size={18} /> : <Camera size={18} />}
-              {loading ? 'Analisando...' : 'Capturar e Corrigir'}
+              {loading ? 'Otimizando e analisando...' : 'Capturar e Corrigir'}
             </button>
           </div>
         </div>
