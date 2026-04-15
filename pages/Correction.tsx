@@ -104,7 +104,7 @@ const Correction: React.FC = () => {
       });
       
       const canvas = document.createElement('canvas');
-      const MAX_WIDTH = 1024; // Increased for better detail
+      const MAX_WIDTH = 800; // Reduced for speed
       const scale = MAX_WIDTH / img.width;
       canvas.width = MAX_WIDTH;
       canvas.height = img.height * scale;
@@ -113,7 +113,7 @@ const Correction: React.FC = () => {
       if (!ctx) throw new Error("Erro ao processar imagem");
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       
-      const resizedImageSrc = canvas.toDataURL('image/jpeg', 0.7);
+      const resizedImageSrc = canvas.toDataURL('image/jpeg', 0.6); // Reduced quality for speed
 
       const gradingResult = await Promise.race([
         gradeAnswerSheet(resizedImageSrc, data),

@@ -83,7 +83,7 @@ export const generateQuestions = async (
 
   const generate = async () => {
     return await ai.models.generateContent({
-      model: "gemini-flash-latest",
+      model: "gemini-1.5-flash",
       contents: `Você é um especialista em elaboração de questões de concursos e vestibulares de alto nível (como ITA, IME, FUVEST e bancas regionais como UECE, URCA, UPE, UFPE).
       Gere exatamente ${count} questões ${questionType === 'mixed' ? 'mesclando múltipla escolha e discursivas' : (questionType === 'multiple_choice' ? 'de múltipla escolha' : 'discursivas/abertas')} inéditas sobre "${topic}" na disciplina de "${subject}"${boardPrompt}.
       
@@ -104,7 +104,7 @@ export const generateQuestions = async (
         - Física: Circuitos elétricos (usando graph), diagramas de forças, trajetórias.
         - Matemática: Gráficos de funções (usando xychart-beta), diagramas de Venn.
         - Geografia/História: Linhas do tempo, fluxos migratórios.
-      - IMPORTANTE: O conteúdo visual deve ser rico e ajudar na resolução da questão. Coloque o código Mermaid ou a Tabela no campo "visualContent".
+        - IMPORTANTE: O conteúdo visual deve ser rico e ajudar na resolução da questão. Coloque o código Mermaid ou a Tabela no campo "visualContent".
       - NÃO inclua títulos ou prefixos como "Diagrama:", "Gráfico:", "graph", "chart" ou "Conteúdo Visual:" dentro do campo "visualContent". O campo deve conter APENAS o código Mermaid puro ou a Tabela Markdown.
       - Se for um diagrama Mermaid, o "visualType" deve ser "graph". Se for tabela, "table".
       - Formatação Matemática e Química: Use OBRIGATORIAMENTE LaTeX.
@@ -208,7 +208,7 @@ export const gradeAnswerSheet = async (imageBase64: string, answerKey: string): 
   
   const generate = async () => {
     return await ai.models.generateContent({
-      model: "gemini-flash-latest",
+      model: "gemini-1.5-flash",
       contents: [
         {
           inlineData: {
@@ -217,18 +217,7 @@ export const gradeAnswerSheet = async (imageBase64: string, answerKey: string): 
           }
         },
         {
-          text: `Analise este cartão-resposta. Gabarito oficial: ${answerKey}.
-          
-          Instruções:
-          - Identifique a alternativa marcada (A, B, C, D ou E) para cada questão.
-          - Use "-" se não houver marcação ou se for questão discursiva (gabarito "-").
-          - Ignore sombras e foque nas marcações.
-          
-          Retorne JSON:
-          {
-            "studentAnswers": ["A", "B", ...],
-            "score": total_acertos
-          }`
+          text: `Gabarito: ${answerKey}. Extraia as respostas do aluno da imagem. JSON: {"studentAnswers": ["A", "B", ...], "score": N}`
         }
       ],
       config: {
@@ -273,7 +262,7 @@ export const autoGradeWithKey = async (imageBase64: string, answerKey: string): 
   
   const generate = async () => {
     return await ai.models.generateContent({
-      model: "gemini-flash-latest",
+      model: "gemini-1.5-flash",
       contents: [
         {
           inlineData: {
@@ -282,17 +271,7 @@ export const autoGradeWithKey = async (imageBase64: string, answerKey: string): 
           }
         },
         {
-          text: `Analise este cartão-resposta. Gabarito oficial: ${answerKey}.
-          
-          Instruções:
-          - Identifique a alternativa marcada (A, B, C, D ou E) para cada questão.
-          - Use "-" se não houver marcação ou se for questão discursiva (gabarito "-").
-          
-          Retorne JSON:
-          {
-            "studentAnswers": ["A", "B", ...],
-            "score": total_acertos
-          }`
+          text: `Gabarito: ${answerKey}. Extraia as respostas do aluno da imagem. JSON: {"studentAnswers": ["A", "B", ...], "score": N}`
         }
       ],
       config: { responseMimeType: "application/json" }
