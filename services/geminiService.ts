@@ -29,7 +29,7 @@ const getApiKey = async (): Promise<string> => {
   throw new Error("Chave de API não encontrada. Por favor, verifique as configurações do ambiente.");
 };
 
-const withRetry = async <T>(fn: () => Promise<T>, retries = 4, delay = 3000): Promise<T> => {
+const withRetry = async <T>(fn: () => Promise<T>, retries = 2, delay = 2000): Promise<T> => {
   try {
     return await fn();
   } catch (error: any) {
@@ -47,9 +47,9 @@ const withRetry = async <T>(fn: () => Promise<T>, retries = 4, delay = 3000): Pr
       errorStr.includes('RESOURCE_EXHAUSTED');
 
     if (retries > 0 && isRetryable) {
-      console.warn(`Gemini API em alta demanda ou limite atingido, tentando novamente em ${delay}ms... (${retries} tentativas restantes)`);
+      console.warn(`Gemini API em alta demanda, tentando novamente em ${delay}ms... (${retries} tentativas restantes)`);
       await new Promise(resolve => setTimeout(resolve, delay));
-      return withRetry(fn, retries - 1, delay * 2);
+      return withRetry(fn, retries - 1, delay * 1.5);
     }
     throw error;
   }
@@ -83,7 +83,7 @@ export const generateQuestions = async (
 
   const generate = async () => {
     return await ai.models.generateContent({
-      model: "gemini-3.1-flash-lite-preview",
+      model: "gemini-1.5-flash",
       contents: `Você é um especialista em elaboração de questões de concursos e vestibulares de alto nível (como ITA, IME, FUVEST e bancas regionais como UECE, URCA, UPE, UFPE).
       Gere exatamente ${count} questões ${questionType === 'mixed' ? 'mesclando múltipla escolha e discursivas' : (questionType === 'multiple_choice' ? 'de múltipla escolha' : 'discursivas/abertas')} inéditas sobre "${topic}" na disciplina de "${subject}"${boardPrompt}.
       
@@ -208,7 +208,7 @@ export const gradeAnswerSheet = async (imageBase64: string, answerKey: string): 
   
   const generate = async () => {
     return await ai.models.generateContent({
-      model: "gemini-3.1-flash-lite-preview",
+      model: "gemini-1.5-flash",
       contents: [
         {
           inlineData: {
@@ -217,26 +217,17 @@ export const gradeAnswerSheet = async (imageBase64: string, answerKey: string): 
           }
         },
         {
-          text: `Você é um especialista em visão computacional e correção de provas. Analise este cartão-resposta de prova.
+          text: `Analise este cartão-resposta. Gabarito oficial: ${answerKey}.
           
-          O gabarito oficial é: ${answerKey}.
+          Instruções:
+          - Identifique a alternativa marcada (A, B, C, D ou E) para cada questão.
+          - Use "-" se não houver marcação ou se for questão discursiva (gabarito "-").
+          - Ignore sombras e foque nas marcações.
           
-          Instruções de Processamento de Imagem:
-          - A imagem pode estar inclinada, com sombras ou iluminação irregular.
-          - Ignore sombras e reflexos; foque nas marcações (círculos preenchidos ou X).
-          - Mesmo que a imagem esteja em um ângulo difícil, use os pontos de referência do cartão (bordas, números das questões) para alinhar mentalmente a grade de respostas.
-          - Se uma marcação estiver parcial, mas for claramente a intenção do aluno, considere-a.
-          
-          Tarefa:
-          1. Identifique a alternativa marcada pelo aluno para cada questão (A, B, C, D ou E).
-          2. Se não houver marcação clara ou houver múltiplas marcações conflitantes, use "-".
-          3. Se o gabarito oficial para uma questão for "-", significa que é uma questão discursiva e não deve ser corrigida automaticamente. Retorne "-" para a resposta do aluno nessa questão.
-          4. Calcule o 'score' (total de acertos). Não conte questões discursivas ("-") como acertos nem erros.
-          
-          Retorne obrigatoriamente um JSON puro no formato:
+          Retorne JSON:
           {
             "studentAnswers": ["A", "B", ...],
-            "score": 10
+            "score": total_acertos
           }`
         }
       ],
@@ -282,7 +273,7 @@ export const autoGradeWithKey = async (imageBase64: string, answerKey: string): 
   
   const generate = async () => {
     return await ai.models.generateContent({
-      model: "gemini-3.1-flash-lite-preview",
+      model: "gemini-1.5-flash",
       contents: [
         {
           inlineData: {
@@ -291,22 +282,17 @@ export const autoGradeWithKey = async (imageBase64: string, answerKey: string): 
           }
         },
         {
-          text: `Você é um especialista em visão computacional e correção de provas. Analise este cartão-resposta. 
-          Gabarito oficial: ${answerKey}.
+          text: `Analise este cartão-resposta. Gabarito oficial: ${answerKey}.
           
-          Instruções de Processamento de Imagem:
-          - A imagem pode estar inclinada, com sombras ou iluminação irregular.
-          - Ignore sombras e reflexos; foque nas marcações (círculos preenchidos ou X).
-          - Mesmo que a imagem esteja em um ângulo difícil, use os pontos de referência do cartão (bordas, números das questões) para alinhar mentalmente a grade de respostas.
+          Instruções:
+          - Identifique a alternativa marcada (A, B, C, D ou E) para cada questão.
+          - Use "-" se não houver marcação ou se for questão discursiva (gabarito "-").
           
-          Regras:
-          1. Identifique a alternativa marcada pelo aluno para cada questão (A, B, C, D ou E).
-          2. Se o gabarito oficial for "-", é uma questão discursiva. Retorne "-" para a resposta do aluno e não conte como acerto nem erro.
-          3. Se não houver marcação clara ou houver múltiplas marcações conflitantes, use "-".
-          
-          Retorne um JSON com:
-          - studentAnswers: array de letras (A-E ou "-")
-          - score: total de acertos.`
+          Retorne JSON:
+          {
+            "studentAnswers": ["A", "B", ...],
+            "score": total_acertos
+          }`
         }
       ],
       config: { responseMimeType: "application/json" }

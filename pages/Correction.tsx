@@ -62,13 +62,16 @@ const Correction: React.FC = () => {
         throw new Error("Não foi possível capturar a imagem da câmera. Verifique as permissões.");
       }
 
-      // Resize image to improve speed
+      // Resize image to improve speed and quality
       const img = new Image();
       img.src = imageSrc;
-      await new Promise((resolve) => (img.onload = resolve));
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () => reject(new Error("Erro ao carregar imagem para processamento."));
+      });
       
       const canvas = document.createElement('canvas');
-      const MAX_WIDTH = 800;
+      const MAX_WIDTH = 1024; // Increased for better detail
       const scale = MAX_WIDTH / img.width;
       canvas.width = MAX_WIDTH;
       canvas.height = img.height * scale;
@@ -79,7 +82,11 @@ const Correction: React.FC = () => {
       
       const resizedImageSrc = canvas.toDataURL('image/jpeg', 0.7);
 
-      const gradingResult = await gradeAnswerSheet(resizedImageSrc, data);
+      const gradingResult = await Promise.race([
+        gradeAnswerSheet(resizedImageSrc, data),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Tempo limite de processamento atingido. Tente novamente.")), 30000))
+      ]) as { studentAnswers: string[], score: number };
+      
       setResult(gradingResult);
       setIsScanning(false);
 
