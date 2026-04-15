@@ -29,7 +29,7 @@ const getApiKey = async (): Promise<string> => {
   throw new Error("Chave de API não encontrada. Por favor, verifique as configurações do ambiente.");
 };
 
-const withRetry = async <T>(fn: () => Promise<T>, retries = 2, delay = 2000): Promise<T> => {
+const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 3000): Promise<T> => {
   try {
     return await fn();
   } catch (error: any) {
@@ -47,9 +47,10 @@ const withRetry = async <T>(fn: () => Promise<T>, retries = 2, delay = 2000): Pr
       errorStr.includes('RESOURCE_EXHAUSTED');
 
     if (retries > 0 && isRetryable) {
-      console.warn(`Gemini API em alta demanda, tentando novamente em ${delay}ms... (${retries} tentativas restantes)`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-      return withRetry(fn, retries - 1, delay * 1.5);
+      const waitTime = message.includes('429') || message.includes('RESOURCE_EXHAUSTED') ? delay * 2 : delay;
+      console.warn(`Gemini API em alta demanda ou limite atingido, tentando novamente em ${waitTime}ms... (${retries} tentativas restantes)`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      return withRetry(fn, retries - 1, waitTime * 1.2);
     }
     throw error;
   }
@@ -186,7 +187,7 @@ export const generateQuestions = async (
         const parsedError = JSON.parse(errorMessage);
         if (parsedError.error) {
           if (parsedError.error.code === 429) {
-            errorMessage = "Limite de uso da IA atingido (Quota Exceeded). Por favor, aguarde alguns segundos e tente novamente.";
+            errorMessage = "O limite de velocidade da IA foi atingido. O sistema tentará novamente em instantes. Se o erro persistir, aguarde 10 segundos.";
           } else if (parsedError.error.code === 503) {
             errorMessage = "O serviço de IA está temporariamente indisponível devido à alta demanda. Tente novamente em instantes.";
           } else {
@@ -242,7 +243,7 @@ export const gradeAnswerSheet = async (imageBase64: string, answerKey: string): 
         const parsedError = JSON.parse(errorMessage);
         if (parsedError.error) {
           if (parsedError.error.code === 429) {
-            errorMessage = "Limite de uso da IA atingido (Quota Exceeded). Por favor, aguarde alguns segundos e tente novamente.";
+            errorMessage = "O limite de velocidade da IA foi atingido. O sistema tentará novamente em instantes. Se o erro persistir, aguarde 10 segundos.";
           } else if (parsedError.error.code === 503) {
             errorMessage = "O serviço de IA está temporariamente indisponível devido à alta demanda. Tente novamente em instantes.";
           } else {
@@ -293,7 +294,7 @@ export const autoGradeWithKey = async (imageBase64: string, answerKey: string): 
         const parsedError = JSON.parse(errorMessage);
         if (parsedError.error) {
           if (parsedError.error.code === 429) {
-            errorMessage = "Limite de uso da IA atingido (Quota Exceeded). Por favor, aguarde alguns segundos e tente novamente.";
+            errorMessage = "O limite de velocidade da IA foi atingido. O sistema tentará novamente em instantes. Se o erro persistir, aguarde 10 segundos.";
           } else if (parsedError.error.code === 503) {
             errorMessage = "O serviço de IA está temporariamente indisponível devido à alta demanda. Tente novamente em instantes.";
           } else {
