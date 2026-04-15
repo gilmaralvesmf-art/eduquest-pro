@@ -36,6 +36,14 @@ const AIStudio: React.FC = () => {
   const [showExam, setShowExam] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
 
+  const toggleBoard = (board: string) => {
+    setBoards(prev => 
+      prev.includes(board) 
+        ? prev.filter(b => b !== board) 
+        : [...prev, board]
+    );
+  };
+
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!topic) return;
@@ -46,7 +54,7 @@ const AIStudio: React.FC = () => {
       
       if (subscriptionStatus === 'free') {
         if (freeCredits <= 0) {
-          setError("Você atingiu o limite de 3 avaliações gratuitas. Assine um de nossos planos para continuar transformando sua rotina: Mensal (R$ 39,90), Trimestral (R$ 29,90/mês), Semestral (R$ 24,90/mês) ou Anual (R$ 19,90/mês).");
+          setError("Você atingiu o limite de 3 gratuidades (gerações ou correções). Assine um de nossos planos para continuar transformando sua rotina: Mensal (R$ 39,90), Trimestral (R$ 29,90/mês), Semestral (R$ 24,90/mês) ou Anual (R$ 19,90/mês).");
           return;
         }
       } else if (subscriptionStatus !== 'lifetime' && profile.role !== 'admin') {
@@ -63,6 +71,10 @@ const AIStudio: React.FC = () => {
            return;
         }
       }
+    } else {
+      // Se o perfil ainda não carregou, mas o usuário está logado, esperamos um pouco
+      setError("Carregando seu perfil... Tente novamente em um instante.");
+      return;
     }
 
     setLoading(true);
@@ -86,7 +98,7 @@ const AIStudio: React.FC = () => {
           const userRef = doc(db, 'users', user.uid);
           if (profile.subscriptionStatus === 'free') {
             await updateDoc(userRef, {
-              freeCredits: profile.freeCredits - 1
+              freeCredits: Math.max(0, profile.freeCredits - 1)
             });
           } else if (profile.role !== 'admin') {
              await updateDoc(userRef, {
@@ -310,12 +322,19 @@ const AIStudio: React.FC = () => {
                           {group.label}
                         </div>
                         {group.options.map(opt => (
-                          <label key={opt} className="flex items-center px-3 py-2 hover:bg-indigo-50 rounded-xl cursor-pointer transition-colors group">
+                          <div 
+                            key={opt} 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleBoard(opt);
+                            }}
+                            className="flex items-center px-3 py-2 hover:bg-indigo-50 rounded-xl cursor-pointer transition-colors group"
+                          >
                             <div className={`w-5 h-5 rounded border-2 flex items-center justify-center mr-3 transition-colors ${boards.includes(opt) ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300 group-hover:border-indigo-400'}`}>
                               {boards.includes(opt) && <CheckCircle2 size={14} className="text-white" />}
                             </div>
                             <span className={`text-sm font-bold ${boards.includes(opt) ? 'text-indigo-900' : 'text-slate-600'}`}>{opt}</span>
-                          </label>
+                          </div>
                         ))}
                       </div>
                     ))}
@@ -403,17 +422,44 @@ const AIStudio: React.FC = () => {
         </div>
 
         {/* Right Column: Results */}
-        <div className="lg:col-span-8">
+        <div className="lg:col-span-8 relative">
           <AnimatePresence mode="popLayout">
-            {questions.length > 0 ? (
+            {loading && questions.length === 0 ? (
+              <motion.div 
+                key="loading-initial"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="h-full min-h-[600px] flex flex-col items-center justify-center bg-white rounded-[3rem] border-4 border-dashed border-indigo-100 p-12 text-center"
+              >
+                <div className="relative mb-8">
+                  <div className="w-24 h-24 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+                  <BrainCircuit className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-indigo-600" size={40} />
+                </div>
+                <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Criando sua Avaliação...</h3>
+                <p className="text-slate-400 max-w-sm font-medium text-lg">Nossa IA está selecionando as melhores questões para você.</p>
+              </motion.div>
+            ) : questions.length > 0 ? (
               <motion.div 
                 key="results"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.4, ease: "easeOut" }}
-                className="space-y-8"
+                className="space-y-8 relative"
               >
+                {loading && (
+                  <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center rounded-[2.5rem] border-2 border-indigo-100 shadow-xl">
+                    <div className="flex flex-col items-center gap-4 p-8 bg-white rounded-3xl shadow-2xl border border-slate-100">
+                      <Loader2 className="animate-spin text-indigo-600" size={48} />
+                      <div className="text-center">
+                        <h3 className="text-lg font-black text-slate-900">Atualizando Prova...</h3>
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Isso levará apenas alguns segundos</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="flex items-center justify-between px-2">
                   <h3 className="text-2xl font-black text-slate-900 tracking-tight">
                     Questões Geradas <span className="text-indigo-600 ml-1">({questions.length})</span>

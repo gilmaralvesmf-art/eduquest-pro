@@ -1,12 +1,16 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { CheckCircle2, ArrowLeft, Printer, Info, Camera, Loader2, RotateCcw, Award } from 'lucide-react';
+import { CheckCircle2, ArrowLeft, Printer, Info, Camera, Loader2, RotateCcw, Award, AlertCircle } from 'lucide-react';
 import Webcam from 'react-webcam';
 import { motion } from 'motion/react';
 import { gradeAnswerSheet } from '../services/geminiService';
 import { storageService } from '../services/storageService';
+import { useAuth } from '../contexts/AuthContext';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const Correction: React.FC = () => {
+  const { profile, user } = useAuth();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const data = queryParams.get('data') || '';
@@ -15,6 +19,7 @@ const Correction: React.FC = () => {
 
   const [isScanning, setIsScanning] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ studentAnswers: string[], score: number } | null>(null);
   const [torchOn, setTorchOn] = useState(false);
   const webcamRef = useRef<Webcam>(null);
@@ -53,8 +58,36 @@ const Correction: React.FC = () => {
       alert("Câmera não inicializada.");
       return;
     }
+
+    // Verificar limites de uso
+    if (profile) {
+      const { subscriptionStatus, freeCredits, usage } = profile;
+      
+      if (subscriptionStatus === 'free') {
+        if (freeCredits <= 0) {
+          setError("Você atingiu o limite de 3 gratuidades (gerações ou correções). Assine um de nossos planos para continuar transformando sua rotina: Mensal (R$ 39,90), Trimestral (R$ 29,90/mês), Semestral (R$ 24,90/mês) ou Anual (R$ 19,90/mês).");
+          setIsScanning(false);
+          return;
+        }
+      } else if (subscriptionStatus !== 'lifetime' && profile.role !== 'admin') {
+        const limits = {
+          monthly: 150, // Aumentado para correções
+          quarterly: 250,
+          semiannual: 400,
+          annual: 600
+        };
+
+        const limit = limits[subscriptionStatus as keyof typeof limits] || 0;
+        if (limit > 0 && (usage?.correctionsMade || 0) >= limit) {
+           setError(`Você atingiu o limite de ${limit} correções do seu plano ${subscriptionStatus}. Assine um plano superior para continuar.`);
+           setIsScanning(false);
+           return;
+        }
+      }
+    }
     
     setLoading(true);
+    setError(null);
     try {
       const imageSrc = webcamRef.current.getScreenshot();
       
@@ -98,6 +131,20 @@ const Correction: React.FC = () => {
         totalQuestions: answers.length,
         studentAnswers: gradingResult.studentAnswers
       });
+
+      // Decrement credits if free user or increment usage if paid
+      if (user && profile) {
+        const userRef = doc(db, 'users', user.uid);
+        if (profile.subscriptionStatus === 'free') {
+          await updateDoc(userRef, {
+            freeCredits: Math.max(0, profile.freeCredits - 1)
+          });
+        } else if (profile.role !== 'admin') {
+           await updateDoc(userRef, {
+            'usage.correctionsMade': (profile.usage?.correctionsMade || 0) + 1
+          });
+        }
+      }
     } catch (error: any) {
       console.error("Erro ao corrigir:", error);
       let userMessage = error.message || "Ocorreu um problema ao processar a imagem. Tente novamente.";
@@ -149,6 +196,17 @@ const Correction: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {error && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-red-50 border-2 border-red-200 p-4 rounded-2xl flex items-start gap-3 text-red-700 mb-6"
+        >
+          <AlertCircle className="flex-shrink-0 mt-0.5" size={20} />
+          <div className="text-sm font-medium">{error}</div>
+        </motion.div>
+      )}
 
       {isScanning && (
         <div className="bg-slate-900 rounded-3xl overflow-hidden relative aspect-[3/4] shadow-2xl border-4 border-indigo-500 w-full max-w-md mx-auto">
