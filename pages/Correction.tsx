@@ -104,7 +104,7 @@ const Correction: React.FC = () => {
       });
       
       const canvas = document.createElement('canvas');
-      const MAX_WIDTH = 640; // Further reduced for ultra speed
+      const MAX_WIDTH = 512; // Further reduced for ultra speed
       const scale = MAX_WIDTH / img.width;
       canvas.width = MAX_WIDTH;
       canvas.height = img.height * scale;
@@ -113,11 +113,11 @@ const Correction: React.FC = () => {
       if (!ctx) throw new Error("Erro ao processar imagem");
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       
-      const resizedImageSrc = canvas.toDataURL('image/jpeg', 0.5); // Further reduced quality for speed
+      const resizedImageSrc = canvas.toDataURL('image/jpeg', 0.4); // Further reduced quality for speed
 
       const gradingResult = await Promise.race([
         gradeAnswerSheet(resizedImageSrc, data),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Tempo limite de processamento atingido. Tente novamente.")), 30000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Tempo limite de processamento atingido. Tente novamente.")), 15000))
       ]) as { studentAnswers: string[], score: number };
       
       setResult(gradingResult);
