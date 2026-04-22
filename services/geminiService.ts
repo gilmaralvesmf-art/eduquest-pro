@@ -29,7 +29,7 @@ const getApiKey = async (): Promise<string> => {
   throw new Error("Chave de API não encontrada. Por favor, verifique as configurações do ambiente.");
 };
 
-const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 3000): Promise<T> => {
+const withRetry = async <T>(fn: () => Promise<T>, retries = 5, delay = 5000): Promise<T> => {
   try {
     return await fn();
   } catch (error: any) {
@@ -50,7 +50,9 @@ const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 3000): Pr
       const waitTime = message.includes('429') || message.includes('RESOURCE_EXHAUSTED') ? delay * 2 : delay;
       console.warn(`Gemini API em alta demanda ou limite atingido, tentando novamente em ${waitTime}ms... (${retries} tentativas restantes)`);
       await new Promise(resolve => setTimeout(resolve, waitTime));
-      return withRetry(fn, retries - 1, waitTime * 1.2);
+      // Increase backoff multiplier for 429s specifically
+      const nextDelay = message.includes('429') ? waitTime * 1.8 : waitTime * 1.5;
+      return withRetry(fn, retries - 1, nextDelay);
     }
     throw error;
   }
@@ -84,7 +86,7 @@ export const generateQuestions = async (
 
   const generate = async () => {
     return await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-3.1-pro-preview",
       contents: `Você é um especialista em elaboração de questões de concursos e vestibulares de alto nível (como ITA, IME, FUVEST e bancas regionais como UECE, URCA, UPE, UFPE).
       Gere exatamente ${count} questões ${questionType === 'mixed' ? 'mesclando múltipla escolha e discursivas' : (questionType === 'multiple_choice' ? 'de múltipla escolha' : 'discursivas/abertas')} inéditas sobre "${topic}" na disciplina de "${subject}"${boardPrompt}.
       
@@ -209,7 +211,7 @@ export const gradeAnswerSheet = async (imageBase64: string, answerKey: string): 
   
   const generate = async () => {
     return await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-3-flash-preview",
       contents: [
         {
           inlineData: {
@@ -263,7 +265,7 @@ export const autoGradeWithKey = async (imageBase64: string, answerKey: string): 
   
   const generate = async () => {
     return await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-3-flash-preview",
       contents: [
         {
           inlineData: {
