@@ -436,8 +436,8 @@ const AIStudio: React.FC = () => {
                   <div className="w-24 h-24 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
                   <BrainCircuit className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-indigo-600" size={40} />
                 </div>
-                <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Criando sua Avaliação...</h3>
-                <p className="text-slate-400 max-w-sm font-medium text-lg">Nossa IA está selecionando as melhores questões para você.</p>
+                <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Criando sua Avaliação Ultra-Rápida...</h3>
+                <p className="text-slate-400 max-w-sm font-medium text-lg italic">"Dica: Gerar menos de 20 questões torna o processo quase instantâneo."</p>
               </motion.div>
             ) : questions.length > 0 ? (
               <motion.div 

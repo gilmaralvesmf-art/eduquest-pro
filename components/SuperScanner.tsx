@@ -97,14 +97,14 @@ const SuperScanner: React.FC<SuperScannerProps> = ({ onClose }) => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 800; // Reduz a resolução para processamento mais rápido
+        const MAX_WIDTH = 512; // Resolução reduzida para correção instantânea
         const scale = Math.min(MAX_WIDTH / img.width, 1);
         canvas.width = img.width * scale;
         canvas.height = img.height * scale;
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          resolve(canvas.toDataURL('image/jpeg', 0.6)); // Compressão JPEG
+          resolve(canvas.toDataURL('image/jpeg', 0.4)); // Maior compressão para velocidade máxima
         } else {
           resolve(imageSrc);
         }
