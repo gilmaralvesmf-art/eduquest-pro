@@ -1,3 +1,49 @@
+@theme {
+  --color-primary: #4f46e5;
+  --color-secondary: #10b981;
+}
+
+/* Professional Table Styling for Exact Sciences */
+.prose table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 1.5rem 0;
+  background-color: white;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.prose th {
+  background-color: #f8fafc;
+  color: #0f172a;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid #e2e8f0;
+  text-align: center !important;
+}
+
+.prose td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  font-size: 0.875rem;
+  text-align: center !important;
+}
+
+.prose tr:last-child td {
+  border-bottom: none;
+}
+
+.prose tr:hover td {
+  background-color: #f1f5f9;
+}
+
 @keyframes scan-line {
   0% { top: 0%; opacity: 0; }
   5% { opacity: 1; }
@@ -9,4 +55,35 @@
   animation: scan-line 2s linear infinite;
   position: absolute;
   width: 100%;
+}
+
+@media print {
+  .break-inside-avoid {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .break-before-page {
+    page-break-before: always;
+    break-before: page;
+  }
+  img, svg, table, .visual-content {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  tr {
+    page-break-inside: avoid;
+  }
+  .prose table {
+    box-shadow: none;
+    border: 1px solid #000;
+  }
+  .prose th {
+    background-color: #f1f5f9 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    border-bottom: 1px solid #000;
+  }
+  .prose td {
+    border-bottom: 1px solid #eee;
+  }
 }

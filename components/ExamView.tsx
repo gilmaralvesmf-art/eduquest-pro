@@ -5,7 +5,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { Question } from '../types';
 import { QRCodeSVG } from 'qrcode.react';
 import html2pdf from 'html2pdf.js';
-import { Document, Packer, Paragraph, TextRun, AlignmentType, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle } from 'docx';
+import { Document, Packer, Paragraph, TextRun, AlignmentType, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle, ImageRun, VerticalAlign } from 'docx';
 import { saveAs } from 'file-saver';
 
 interface ExamViewProps {
@@ -137,16 +137,18 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
     try {
       const element = examRef.current;
       const opt = {
-        margin:       10,
+        margin:       [10, 10, 10, 10] as [number, number, number, number], // top, left, bottom, right
         filename:     `${mode === 'teacher' ? 'Professor' : 'Aluno'}_${subject}_${topic.replace(/\s+/g, '_')}.pdf`,
         image:        { type: 'jpeg' as const, quality: 0.98 },
         html2canvas:  { 
           scale: 2, 
           useCORS: true, 
-          windowWidth: 1024,
-          logging: false
+          letterRendering: true,
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: element.clientWidth + 40 
         },
-        jsPDF:        { unit: 'mm' as const, format: 'a4', orientation: 'portrait' as const },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true } as any,
         pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
       };
 
@@ -186,169 +188,338 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
       .trim();
   };
 
+  const renderTextToProps = (text: string) => {
+    if (!text) return [];
+    
+    // First, clean up some Latex-like symbols but keep formatting markers
+    let processed = text
+      .replace(/\\rightarrow/g, '→')
+      .replace(/->/g, '→')
+      .replace(/\\Delta/g, 'Δ')
+      .replace(/\\text\{kJ\}/g, 'kJ')
+      .replace(/\\circ/g, '°')
+      .replace(/\\ce\{([^}]+)\}/g, '$1')
+      .replace(/\\text\{([^}]+)\}/g, '$1')
+      .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2')
+      .replace(/\\sqrt\{([^}]+)\}/g, '√($1)')
+      .replace(/\\cdot/g, '·')
+      .replace(/\\times/g, '×')
+      .replace(/\$+/g, '');
+
+    const props: any[] = [];
+    // Basic markdown parsing for bold and italic
+    const parts = processed.split(/(\*\*.*?\*\*|\*.*?\*)/g);
+    
+    parts.forEach(part => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        props.push({ text: part.slice(2, -2), bold: true });
+      } else if (part.startsWith('*') && part.endsWith('*')) {
+        props.push({ text: part.slice(1, -1), italics: true });
+      } else if (part) {
+        props.push({ text: part });
+      }
+    });
+
+    return props;
+  };
+
+  const renderTextToRuns = (text: string) => {
+    return renderTextToProps(text).map(p => new TextRun(p));
+  };
+
+  const parseMarkdownTable = (markdown: string) => {
+    const lines = markdown.trim().split('\n');
+    const headerRowText = lines.find(line => line.includes('|'));
+    if (!headerRowText) return new Paragraph({ text: "[Tabela mal formatada]" });
+
+    const rowsText = lines.filter(line => line.includes('|') && !line.match(/^[|:\-\s]+$/));
+    
+    return new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: {
+        top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+        left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+        right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+        insideHorizontal: { style: BorderStyle.SINGLE, size: 2, color: "E2E8F0" },
+        insideVertical: { style: BorderStyle.SINGLE, size: 2, color: "E2E8F0" },
+      },
+      rows: rowsText.map((row, rIdx) => {
+        const cells = row.split('|')
+          .map(c => c.trim())
+          .filter((c, i, a) => {
+            if (i === 0 && c === '') return false;
+            if (i === a.length - 1 && c === '') return false;
+            return true;
+          });
+
+        return new TableRow({
+          children: cells.map(cell => new TableCell({
+            children: [new Paragraph({ 
+              children: rIdx === 0 
+                ? [new TextRun({ text: cell, bold: true, size: 20 })] 
+                : renderTextToProps(cell).map(p => new TextRun({ ...p, size: 20 })),
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 120, after: 120 }
+            })],
+            verticalAlign: VerticalAlign.CENTER,
+            shading: rIdx === 0 ? { fill: "F8FAFC" } : undefined,
+            margins: { top: 120, bottom: 120, left: 120, right: 120 },
+            width: { size: 100 / (cells.length || 1), type: WidthType.PERCENTAGE }
+          }))
+        });
+      })
+    });
+  };
+
+  const svgToImage = async (svgElement: SVGSVGElement): Promise<{ data: string, width: number, height: number } | null> => {
+    try {
+      const clonedSvg = svgElement.cloneNode(true) as SVGSVGElement;
+      const bbox = svgElement.getBBox();
+      const width = bbox.width || 400;
+      const height = bbox.height || 300;
+      
+      clonedSvg.setAttribute('width', width.toString());
+      clonedSvg.setAttribute('height', height.toString());
+      
+      const svgData = new XMLSerializer().serializeToString(clonedSvg);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+
+      const img = new Image();
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+
+      return new Promise((resolve) => {
+        img.onload = () => {
+          const scale = 4; // High resolution
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          ctx.fillStyle = 'white';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(url);
+          resolve({ 
+            data: canvas.toDataURL('image/png', 1.0),
+            width: img.width,
+            height: img.height
+          });
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          resolve(null);
+        };
+        img.src = url;
+      });
+    } catch (e) {
+      console.error('svgToImage error:', e);
+      return null;
+    }
+  };
+
   const handleExportWord = async (mode: 'student' | 'teacher') => {
     setExporting(true);
     try {
+      const children: any[] = [
+        new Paragraph({
+          text: `Avaliação de ${subject}${mode === 'teacher' ? ' (Professor)' : ''}`,
+          heading: HeadingLevel.HEADING_1,
+          alignment: AlignmentType.CENTER,
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: `Tópico: ${topic}`, bold: true }),
+            new TextRun({ text: `  •  Banca: ${board}`, bold: true }),
+          ],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 400 },
+        }),
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({
+                  children: [new Paragraph({ text: "Nome do Aluno: ________________________________________________" })],
+                  width: { size: 70, type: WidthType.PERCENTAGE },
+                }),
+                new TableCell({
+                  children: [new Paragraph({ text: "Data: ____/____/____" })],
+                  width: { size: 30, type: WidthType.PERCENTAGE },
+                }),
+              ],
+            }),
+            new TableRow({
+              children: [
+                new TableCell({
+                  children: [new Paragraph({ text: "Turma: ________________" })],
+                  width: { size: 50, type: WidthType.PERCENTAGE },
+                }),
+                new TableCell({
+                  children: [new Paragraph({ text: "Nota: ________" })],
+                  width: { size: 50, type: WidthType.PERCENTAGE },
+                }),
+              ],
+            }),
+          ],
+        }),
+        new Paragraph({ text: "", spacing: { after: 400 } }),
+      ];
+
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
+        
+        children.push(new Paragraph({
+          children: [
+            new TextRun({ text: `${i + 1}. `, bold: true }),
+            ...renderTextToRuns(q.text)
+          ],
+          spacing: { before: 400, after: 200 },
+        }));
+
+        if (q.visualContent && q.visualType !== 'none') {
+          if (q.visualType === 'table') {
+            children.push(parseMarkdownTable(q.visualContent));
+            children.push(new Paragraph({ text: "" }));
+          } else {
+            const visualContainer = document.getElementById(`visual-${i}`);
+            const svg = visualContainer?.querySelector('svg');
+            
+            if (svg) {
+              const imgInfo = await svgToImage(svg as any);
+              if (imgInfo) {
+                const response = await fetch(imgInfo.data);
+                const buffer = await response.arrayBuffer();
+                
+                // Max width should be around 500 for A4
+                const maxWidth = 450;
+                let finalWidth = imgInfo.width;
+                let finalHeight = imgInfo.height;
+                
+                if (finalWidth > maxWidth) {
+                  const ratio = maxWidth / finalWidth;
+                  finalWidth = maxWidth;
+                  finalHeight = finalHeight * ratio;
+                }
+
+                children.push(new Paragraph({
+                  children: [
+                    new ImageRun({
+                      data: buffer,
+                      transformation: { width: finalWidth, height: finalHeight },
+                      type: 'png'
+                    })
+                  ],
+                  alignment: AlignmentType.CENTER,
+                  spacing: { before: 200, after: 200 }
+                }));
+              }
+            } else {
+              children.push(new Paragraph({
+                children: [
+                  new TextRun({ 
+                    text: q.visualContent.includes('```mermaid') ? "[Diagrama indisponível no Word - Veja PDF]" : cleanTextForWord(q.visualContent), 
+                    italics: true, 
+                    color: "666666" 
+                  }),
+                ],
+                spacing: { before: 200, after: 200 },
+                indent: { left: 720 },
+              }));
+            }
+          }
+        }
+
+        if (q.questionType === 'open') {
+          if (mode === 'student') {
+            for (let j = 0; j < 5; j++) {
+              children.push(new Paragraph({ text: "____________________________________________________________________________________" }));
+            }
+          } else {
+            children.push(new Paragraph({
+              children: [
+                new TextRun({ text: "Padrão de Resposta: ", bold: true, color: "10b981" }),
+                ...renderTextToRuns(q.correctAnswer)
+              ],
+              spacing: { before: 200 },
+              indent: { left: 720 },
+            }));
+          }
+        } else {
+          q.options?.forEach((opt, oIdx) => {
+            const isCorrect = opt === q.correctAnswer;
+            children.push(new Paragraph({
+              children: [
+                new TextRun({ text: `${String.fromCharCode(65 + oIdx)}) `, bold: mode === 'teacher' && isCorrect }),
+                ...renderTextToRuns(opt).map(run => {
+                  if (mode === 'teacher' && isCorrect) {
+                     return new TextRun({ ...run, bold: true, color: "10b981" });
+                  }
+                  return run;
+                })
+              ],
+              indent: { left: 720 },
+            }));
+          });
+        }
+
+        if (mode === 'teacher' && q.commentary) {
+          children.push(new Paragraph({
+            children: [
+              new TextRun({ text: "Comentário: ", bold: true, color: "4f46e5" }),
+              ...renderTextToRuns(q.commentary).map(run => new TextRun({ ...run, italics: true }))
+            ],
+            indent: { left: 720 },
+            spacing: { before: 200 },
+          }));
+        }
+      }
+
+      if (mode === 'teacher') {
+        children.push(new Paragraph({ text: "", spacing: { before: 800 } }));
+        children.push(new Paragraph({
+          text: "Gabarito Oficial",
+          heading: HeadingLevel.HEADING_2,
+          alignment: AlignmentType.CENTER,
+        }));
+        children.push(new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          borders: {
+            top: { style: BorderStyle.SINGLE, size: 1 },
+            bottom: { style: BorderStyle.SINGLE, size: 1 },
+            left: { style: BorderStyle.SINGLE, size: 1 },
+            right: { style: BorderStyle.SINGLE, size: 1 },
+            insideHorizontal: { style: BorderStyle.SINGLE, size: 1 },
+            insideVertical: { style: BorderStyle.SINGLE, size: 1 },
+          },
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Questão", bold: true })], alignment: AlignmentType.CENTER })], shading: { fill: "F1F5F9" } }),
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Gabarito", bold: true })], alignment: AlignmentType.CENTER })], shading: { fill: "F1F5F9" } }),
+              ],
+            }),
+            ...questions.map((q, i) => {
+              const correctIndex = q.options?.findIndex(opt => opt === q.correctAnswer) ?? -1;
+              const letter = correctIndex >= 0 ? String.fromCharCode(65 + correctIndex) : (q.questionType === 'open' ? 'Discursiva' : q.correctAnswer.substring(0, 1));
+              return new TableRow({
+                children: [
+                  new TableCell({ children: [new Paragraph({ text: `${i + 1}`, alignment: AlignmentType.CENTER })] }),
+                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: letter, bold: true })], alignment: AlignmentType.CENTER })] }),
+                ],
+              });
+            }),
+          ],
+        }));
+      }
+
       const doc = new Document({
         sections: [{
           properties: {},
-          children: [
-            new Paragraph({
-              text: `Avaliação de ${subject}${mode === 'teacher' ? ' (Professor)' : ''}`,
-              heading: HeadingLevel.HEADING_1,
-              alignment: AlignmentType.CENTER,
-            }),
-            new Paragraph({
-              children: [
-                new TextRun({ text: `Tópico: ${topic}`, bold: true }),
-                new TextRun({ text: `  •  Banca: ${board}`, bold: true }),
-              ],
-              alignment: AlignmentType.CENTER,
-            }),
-            new Paragraph({ text: "" }),
-            new Table({
-              width: { size: 100, type: WidthType.PERCENTAGE },
-              rows: [
-                new TableRow({
-                  children: [
-                    new TableCell({
-                      children: [new Paragraph({ text: "Nome do Aluno: ________________________________________________" })],
-                      width: { size: 70, type: WidthType.PERCENTAGE },
-                    }),
-                    new TableCell({
-                      children: [new Paragraph({ text: "Data: ____/____/____" })],
-                      width: { size: 30, type: WidthType.PERCENTAGE },
-                    }),
-                  ],
-                }),
-                new TableRow({
-                  children: [
-                    new TableCell({
-                      children: [new Paragraph({ text: "Turma: ________________" })],
-                      width: { size: 50, type: WidthType.PERCENTAGE },
-                    }),
-                    new TableCell({
-                      children: [new Paragraph({ text: "Nota: ________" })],
-                      width: { size: 50, type: WidthType.PERCENTAGE },
-                    }),
-                  ],
-                }),
-              ],
-            }),
-            new Paragraph({ text: "" }),
-            ...questions.flatMap((q, idx) => {
-              const questionElements: any[] = [
-                new Paragraph({
-                  children: [
-                    new TextRun({ text: `${idx + 1}. `, bold: true }),
-                    new TextRun({ text: cleanTextForWord(q.text) }),
-                  ],
-                  spacing: { before: 400 },
-                }),
-              ];
-
-              if (q.visualContent && q.visualType !== 'none') {
-                const isMermaid = q.visualContent.includes('```mermaid') || q.visualType === 'graph';
-                questionElements.push(new Paragraph({
-                  children: [
-                    new TextRun({ 
-                      text: isMermaid ? "[Diagrama/Gráfico]: " : "[Tabela/Conteúdo Visual]: ", 
-                      bold: true, 
-                      italics: true, 
-                      color: "666666" 
-                    }),
-                    new TextRun({ 
-                      text: isMermaid 
-                        ? "Este diagrama deve ser visualizado na versão PDF ou no Portal EduQuest Pro." 
-                        : cleanTextForWord(q.visualContent), 
-                      italics: true, 
-                      color: "666666" 
-                    }),
-                  ],
-                  spacing: { before: 200, after: 200 },
-                  indent: { left: 720 },
-                }));
-              }
-
-              if (q.questionType === 'open') {
-                if (mode === 'student') {
-                  for (let i = 0; i < 5; i++) {
-                    questionElements.push(new Paragraph({ text: "____________________________________________________________________________________" }));
-                  }
-                } else {
-                  questionElements.push(new Paragraph({
-                    children: [
-                      new TextRun({ text: "Padrão de Resposta: ", bold: true, color: "10b981" }),
-                      new TextRun({ text: cleanTextForWord(q.correctAnswer) }),
-                    ],
-                    spacing: { before: 200 },
-                    indent: { left: 720 },
-                  }));
-                }
-              } else {
-                q.options?.forEach((opt, oIdx) => {
-                  const isCorrect = opt === q.correctAnswer;
-                  questionElements.push(new Paragraph({
-                    children: [
-                      new TextRun({ text: `${String.fromCharCode(65 + oIdx)}) `, bold: mode === 'teacher' && isCorrect }),
-                      new TextRun({ text: cleanTextForWord(opt), bold: mode === 'teacher' && isCorrect, color: mode === 'teacher' && isCorrect ? "10b981" : undefined }),
-                    ],
-                    indent: { left: 720 },
-                  }));
-                });
-              }
-
-              if (mode === 'teacher' && q.commentary) {
-                questionElements.push(new Paragraph({
-                  children: [
-                    new TextRun({ text: "Comentário: ", bold: true, color: "4f46e5" }),
-                    new TextRun({ text: cleanTextForWord(q.commentary), italics: true }),
-                  ],
-                  indent: { left: 720 },
-                  spacing: { before: 200 },
-                }));
-              }
-
-              return questionElements;
-            }),
-            ...(mode === 'teacher' ? [
-              new Paragraph({ text: "", spacing: { before: 800 } }),
-              new Paragraph({
-                text: "Gabarito Oficial",
-                heading: HeadingLevel.HEADING_2,
-                alignment: AlignmentType.CENTER,
-              }),
-              new Table({
-                width: { size: 100, type: WidthType.PERCENTAGE },
-                borders: {
-                  top: { style: BorderStyle.SINGLE, size: 1 },
-                  bottom: { style: BorderStyle.SINGLE, size: 1 },
-                  left: { style: BorderStyle.SINGLE, size: 1 },
-                  right: { style: BorderStyle.SINGLE, size: 1 },
-                  insideHorizontal: { style: BorderStyle.SINGLE, size: 1 },
-                  insideVertical: { style: BorderStyle.SINGLE, size: 1 },
-                },
-                rows: [
-                  new TableRow({
-                    children: [
-                      new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Questão", bold: true })], alignment: AlignmentType.CENTER })] }),
-                      new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Gabarito", bold: true })], alignment: AlignmentType.CENTER })] }),
-                    ],
-                  }),
-                  ...questions.map((q, i) => {
-                    const correctIndex = q.options?.findIndex(opt => opt === q.correctAnswer) ?? -1;
-                    const letter = correctIndex >= 0 ? String.fromCharCode(65 + correctIndex) : (q.questionType === 'open' ? 'Discursiva' : q.correctAnswer.substring(0, 1));
-                    return new TableRow({
-                      children: [
-                        new TableCell({ children: [new Paragraph({ text: `${i + 1}`, alignment: AlignmentType.CENTER })] }),
-                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: letter, bold: true })], alignment: AlignmentType.CENTER })] }),
-                      ],
-                    });
-                  }),
-                ],
-              }),
-            ] : []),
-          ],
+          children: children,
         }],
       });
 
@@ -441,7 +612,7 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
                   </div>
 
                   {q.visualType && q.visualType !== 'none' && q.visualContent && (
-                    <div className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-xl print:bg-white print:border-slate-900">
+                    <div id={`visual-${idx}`} className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-xl print:bg-white print:border-slate-900 break-inside-avoid">
                       <div className="prose prose-sm prose-slate max-w-none overflow-x-auto print:text-black">
                         <MarkdownRenderer content={q.visualContent} />
                       </div>

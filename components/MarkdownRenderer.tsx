@@ -101,20 +101,34 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({ c
     processedContent = `\`\`\`mermaid\n${content}\n\`\`\``;
   }
 
-  // Remove \ce commands that are not supported by default KaTeX without mhchem extension
-  const cleanContent = processedContent
-    .replace(/\\ce\s*\{([^}]+)\}/g, '$1')
-    .replace(/\\ce\s+([^\s$]+)/g, '$1')
-    // Fix broken table syntax (double pipes or missing newlines)
-    .replace(/\s*\|\|\s*/g, '|\n|')
-    // Fix common missing backslashes for symbols
-    .replace(/(?<!\\)Delta/g, '\\Delta')
-    .replace(/(?<!\\)rightarrow/g, '\\rightarrow')
-    .replace(/(?<!\\)textkJ/g, '\\text{kJ}')
-    .replace(/(?<!\\)circ/g, '\\circ')
-    // Ensure symbols are wrapped in $ if they aren't already
-    // We look for \Delta, \rightarrow, etc. that are NOT inside $...$
-    .replace(/(?<![\$])(\\Delta|\\rightarrow|\\text\{kJ\}|\\circ)(?![^\$]*\$)/g, '$$$1$');
+  // Remove \ce commands and fix exatas symbols ONLY outside of code blocks
+  const processText = (text: string) => {
+    return text
+      .replace(/\\ce\s*\{([^}]+)\}/g, '$1')
+      .replace(/\\ce\s+([^\s$]+)/g, '$1')
+      // Fix broken table syntax (double pipes or missing newlines)
+      .replace(/\s*\|\|\s*/g, '|\n|')
+      // Fix common missing backslashes and misformatted symbols for exatas
+      .replace(/(?<!\\)Delta\b/g, '\\Delta')
+      .replace(/(?<!\\)rightarrow/g, '\\rightarrow')
+      .replace(/->/g, '\\rightarrow')
+      .replace(/(?<!\\)textkJ/g, '\\text{kJ}')
+      .replace(/(?<!\\)circ\b/g, '\\circ')
+      .replace(/(\d+)\^o\b/g, '$1^\\circ') // handle 25^o as 25 degrees
+      .replace(/\\degree\b/g, '\\circ')
+      .replace(/(\d+)\s*C\b/g, '$1\\,^\\circ\\text{C}') // handle 25 C as 25 °C
+      .replace(/(\d+)\s*K\b/g, '$1\\,\\text{K}') // Kelvin
+      .replace(/(\d+)\s*kJ\b/g, '$1\\,\\text{kJ}') // kJ
+      // Ensure symbols are wrapped in $ if they aren't already
+      .replace(/(?<![\$])(\\Delta|\\rightarrow|\\text\{kJ\}|\\circ)(?![^\$]*\$)/g, '$$$1$');
+  };
+
+  // Split content by code blocks to avoid processing them
+  const parts = processedContent.split(/(```[\s\S]*?```)/g);
+  const cleanContent = parts.map(part => {
+    if (part.startsWith('```')) return part;
+    return processText(part);
+  }).join('');
 
   return (
     <ReactMarkdown

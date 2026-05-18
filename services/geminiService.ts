@@ -62,30 +62,37 @@ export const generateQuestions = async (
   
   const boardPrompt = boards && boards.length > 0 ? ` no estilo das bancas: ${boards.join(', ')}` : "";
   
-  let formatPrompt = "";
-  if (questionType === 'multiple_choice') {
-    formatPrompt = `- Cada questão deve ter um enunciado claro e 5 alternativas (A, B, C, D, E).\n- Marque a alternativa correta.\n- O campo 'options' deve ter 5 itens.`;
-  } else if (questionType === 'open') {
-    formatPrompt = `- Cada questão deve ser discursiva/aberta.\n- Forneça um padrão de resposta esperado.\n- O campo 'options' deve ser vazio [].`;
-  } else {
-    formatPrompt = `- Mescle questões de múltipla escolha (5 alternativas) e discursivas.\n- Siga os formatos acima para cada tipo.`;
-  }
+  const formatPrompt = questionType === 'multiple_choice'
+    ? `- Cada questão deve ter um enunciado claro e 5 alternativas (A, B, C, D, E).\n- Marque a alternativa correta.\n- O campo 'options' deve ter 5 itens.`
+    : questionType === 'open'
+    ? `- Cada questão deve ser discursiva/aberta.\n- Forneça um padrão de resposta esperado.\n- O campo 'options' deve ser vazio [].`
+    : `- Mescle questões de múltipla escolha (5 alternativas) e discursivas.\n- Siga os formatos acima para cada tipo.`;
 
   const difficultyPrompt = difficulty === Difficulty.MIXED 
     ? `- Nível de dificuldade equilibrado entre Fácil, Médio e Difícil.`
     : `- Nível de dificuldade: ${difficulty}.`;
 
+  const isExatas = /Matemática|Física|Química|Exatas|Engenharia/i.test(subject);
+  const visualPrompt = isExatas 
+    ? `- EXTRAS EXATAS: É OBRIGATÓRIO o uso de tabelas de dados complexas (Markdown) ou diagramas técnicos (Mermaid) em PELO MENOS 80% das questões.
+       - Para Física: Use diagramas de blocos, circuitos ou vetores.
+       - Para Química: Use tabelas periódicas parciais, tabelas de entalpia ou diagramas de energia.
+       - Para Matemática: Use tabelas de frequência, dados estatísticos ou funções.
+       - IMPORTANTE: Sempre envolva diagramas Mermaid em blocos de código \`\`\`mermaid e use aspas para rótulos de nós que contenham caracteres especiais ou fórmulas.`
+    : `- Elementos Visuais: Use Markdown para tabelas e Mermaid para diagramas em 60% das questões. Envolva diagramas Mermaid em blocos de código \`\`\`mermaid.`;
+
   const generate = async () => {
     return await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Você é um especialista em exames de alto nível (ITA, IME, FUVEST, ENEM).
+      contents: `Você é um autor de questões de exames de elite (ITA, IME, FUVEST, ENEM).
       Gere ${count} questões de ${subject} sobre "${topic}"${boardPrompt}.
       
-      Critérios:
+      Critérios de Qualidade Editorial:
       ${difficultyPrompt}
       ${formatPrompt}
-      - Elementos Visuais: Use Markdown para tabelas e Mermaid para diagramas em 60% das questões.
-      - LaTeX: Use $...$ para toda e qualquer fórmula matemática ou química.
+      ${visualPrompt}
+      - LaTeX: Use $...$ (inline) ou $$...$$ (block) para TODA e QUALQUER fórmula matemática, unidade física (ex: $kJ/mol$, $m/s^2$) ou símbolo químico.
+      - NÃO use descrições textuais se puder usar uma tabela ou gráfico.
       
       Retorne APENAS o JSON.`,
       config: {

@@ -1,18 +1,24 @@
 import express from 'express';
-import * as admin from 'firebase-admin';
-import firebaseConfig from '../../firebase-applet-config.json';
+import { initializeApp, getApps, applicationDefault } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Fix for Node 22 JSON import attribute missing error
+const configPath = path.resolve(process.cwd(), 'firebase-applet-config.json');
+const firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
 
 const router = express.Router();
 
 // Inicializa o Firebase Admin SDK se ainda não estiver inicializado
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault(), // Assume que o ambiente tem as credenciais padrão do GCP
+if (getApps().length === 0) {
+  initializeApp({
+    credential: applicationDefault(), // Assume que o ambiente tem as credenciais padrão do GCP
     projectId: firebaseConfig.projectId,
   });
 }
 
-const db = admin.firestore();
+const db = getFirestore();
 // Especifica o banco de dados correto
 db.settings({ databaseId: firebaseConfig.firestoreDatabaseId });
 
