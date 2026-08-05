@@ -82,6 +82,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 updates.role = 'user';
                 needsUpdate = true;
               }
+              if (!data.createdAt) {
+                data.createdAt = new Date().toISOString();
+                updates.createdAt = data.createdAt;
+                needsUpdate = true;
+              }
 
               // Auto-upgrade creator to admin with lifetime credits
               if (currentUser.email === 'gilmaralvesmf@gmail.com' && (data.role !== 'admin' || data.subscriptionStatus !== 'lifetime' || !data.isLifetime)) {
@@ -153,10 +158,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   const pendingSnap = await getDoc(pendingRef);
                   if (pendingSnap.exists()) {
                     pendingSub = pendingSnap.data();
-                    await deleteDoc(pendingRef);
+                    // We don't delete here anymore, let the creation handle it or handle it after successful setDoc
                   }
                 } catch (error) {
-                  console.error("Error checking pending subscription:", error);
+                  console.warn("Non-critical: Error checking pending subscription:", error);
                 }
               }
 
@@ -180,7 +185,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   lastResetDate: new Date().toISOString(),
                 }
               };
+              
               await setDoc(userRef, newProfile);
+              
+              // Clean up pending subscription after successful profile creation
+              if (pendingSub && currentUser.email) {
+                try {
+                  const pendingRef = doc(db, 'pending_subscriptions', currentUser.email);
+                  await deleteDoc(pendingRef);
+                } catch (e) {
+                  console.error("Error deleting pending subscription:", e);
+                }
+              }
+
               setProfile(newProfile);
             }
           } catch (err) {

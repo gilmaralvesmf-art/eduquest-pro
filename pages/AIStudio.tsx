@@ -54,7 +54,10 @@ const AIStudio: React.FC = () => {
       
       if (subscriptionStatus === 'free') {
         if (freeCredits <= 0) {
-          setError("Você atingiu o limite de 3 gratuidades (gerações ou correções). Assine um de nossos planos para continuar transformando sua rotina: Mensal (R$ 39,90), Trimestral (R$ 29,90/mês), Semestral (R$ 24,90/mês) ou Anual (R$ 19,90/mês).");
+          const msg = "Você atingiu o limite de 3 gratuidades (gerações ou correções). Assine um de nossos planos para continuar transformando sua rotina.";
+          alert(msg);
+          setError(msg);
+          navigate('/pricing');
           return;
         }
       } else if (subscriptionStatus !== 'lifetime' && profile.role !== 'admin') {
@@ -67,7 +70,10 @@ const AIStudio: React.FC = () => {
 
         const limit = limits[subscriptionStatus as keyof typeof limits] || 0;
         if (limit > 0 && (usage?.assessmentsGenerated || 0) >= limit) {
-           setError(`Você atingiu o limite de ${limit} avaliações do seu plano ${subscriptionStatus}. Assine um plano superior para continuar.`);
+           const msg = `Você atingiu o limite de ${limit} avaliações do seu plano ${subscriptionStatus}. Assine um plano superior para continuar.`;
+           alert(msg);
+           setError(msg);
+           navigate('/pricing');
            return;
         }
       }
@@ -95,15 +101,19 @@ const AIStudio: React.FC = () => {
         
         // Decrement credits if free user or increment usage if paid
         if (user && profile) {
-          const userRef = doc(db, 'users', user.uid);
-          if (profile.subscriptionStatus === 'free') {
-            await updateDoc(userRef, {
-              freeCredits: Math.max(0, profile.freeCredits - 1)
-            });
-          } else if (profile.role !== 'admin') {
-             await updateDoc(userRef, {
-              'usage.assessmentsGenerated': (profile.usage?.assessmentsGenerated || 0) + 1
-            });
+          try {
+            const userRef = doc(db, 'users', user.uid);
+            if (profile.subscriptionStatus === 'free') {
+              await updateDoc(userRef, {
+                freeCredits: Math.max(0, profile.freeCredits - 1)
+              });
+            } else if (profile.role !== 'admin') {
+               await updateDoc(userRef, {
+                'usage.assessmentsGenerated': (profile.usage?.assessmentsGenerated || 0) + 1
+              });
+            }
+          } catch (dbError) {
+            console.error("Erro ao atualizar uso no Firestore:", dbError);
           }
         }
 
@@ -476,7 +486,7 @@ const AIStudio: React.FC = () => {
                 <div className="grid grid-cols-1 gap-6">
                   {questions.map((q, idx) => (
                     <motion.div 
-                      key={q.id || `q-${idx}`}
+                      key={q.id ? `${q.id}-${idx}` : `q-${idx}`}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.05 }}
@@ -540,8 +550,15 @@ const AIStudio: React.FC = () => {
                                     value={opt}
                                     onChange={(e) => {
                                       const newOpts = [...editedQuestion.options!];
+                                      const oldText = newOpts[oIdx];
                                       newOpts[oIdx] = e.target.value;
-                                      setEditedQuestion({ ...editedQuestion, options: newOpts });
+                                      
+                                      const updates: any = { options: newOpts };
+                                      if (oldText === editedQuestion.correctAnswer) {
+                                        updates.correctAnswer = e.target.value;
+                                      }
+                                      
+                                      setEditedQuestion({ ...editedQuestion, ...updates });
                                     }}
                                     className="flex-1 bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-2 text-sm font-medium text-slate-700 focus:border-indigo-600 focus:bg-white outline-none transition-all"
                                   />

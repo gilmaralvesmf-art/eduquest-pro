@@ -387,17 +387,33 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
           } else {
             const visualContainer = document.getElementById(`visual-${i}`);
             const svg = visualContainer?.querySelector('svg');
+            const canvas = visualContainer?.querySelector('canvas');
             
-            if (svg) {
-              const imgInfo = await svgToImage(svg as any);
-              if (imgInfo) {
-                const response = await fetch(imgInfo.data);
+            if (svg || canvas) {
+              let imgData: string | null = null;
+              let imgWidth = 400;
+              let imgHeight = 300;
+
+              if (svg) {
+                const imgInfo = await svgToImage(svg as any);
+                if (imgInfo) {
+                  imgData = imgInfo.data;
+                  imgWidth = imgInfo.width;
+                  imgHeight = imgInfo.height;
+                }
+              } else if (canvas) {
+                imgData = (canvas as HTMLCanvasElement).toDataURL('image/png');
+                imgWidth = (canvas as HTMLCanvasElement).width / 2; // Assume high DPI
+                imgHeight = (canvas as HTMLCanvasElement).height / 2;
+              }
+              
+              if (imgData) {
+                const response = await fetch(imgData);
                 const buffer = await response.arrayBuffer();
                 
-                // Max width should be around 500 for A4
                 const maxWidth = 450;
-                let finalWidth = imgInfo.width;
-                let finalHeight = imgInfo.height;
+                let finalWidth = imgWidth;
+                let finalHeight = imgHeight;
                 
                 if (finalWidth > maxWidth) {
                   const ratio = maxWidth / finalWidth;
@@ -421,7 +437,9 @@ const ExamView: React.FC<ExamViewProps> = ({ subject, topic, board, questions, o
               children.push(new Paragraph({
                 children: [
                   new TextRun({ 
-                    text: q.visualContent.includes('```mermaid') ? "[Diagrama indisponível no Word - Veja PDF]" : cleanTextForWord(q.visualContent), 
+                    text: q.visualContent.includes('```mermaid') || q.visualContent.includes('```geogebra') 
+                      ? "[Gráfico/Diagrama indisponível no Word - Veja PDF ou Versão Online]" 
+                      : cleanTextForWord(q.visualContent), 
                     italics: true, 
                     color: "666666" 
                   }),

@@ -4,8 +4,14 @@ import Webcam from 'react-webcam';
 import { motion, AnimatePresence } from 'motion/react';
 import { gradeAnswerSheet } from '../services/geminiService';
 import { storageService } from '../services/storageService';
+import { useAuth } from '../contexts/AuthContext';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useNavigate } from 'react-router-dom';
 
 const ManualCorrection: React.FC = () => {
+  const { profile, user } = useAuth();
+  const navigate = useNavigate();
   const [title, setTitle] = useState('');
   const [topic, setTopic] = useState('');
   const [numQuestions, setNumQuestions] = useState(10);
@@ -50,6 +56,33 @@ const ManualCorrection: React.FC = () => {
       return;
     }
     
+    // Verificar limites de uso
+    if (profile) {
+      const { subscriptionStatus, freeCredits, usage } = profile;
+      
+      if (subscriptionStatus === 'free') {
+        if (freeCredits <= 0) {
+          alert("Você atingiu o limite de 3 correções gratuitas. Assine um de nossos planos para continuar transformando sua rotina.");
+          navigate('/pricing');
+          return;
+        }
+      } else if (subscriptionStatus !== 'lifetime' && profile.role !== 'admin') {
+        const limits = {
+          monthly: 150,
+          quarterly: 300,
+          semiannual: 500,
+          annual: 800
+        };
+
+        const limit = limits[subscriptionStatus as keyof typeof limits] || 0;
+        if (limit > 0 && (usage?.correctionsMade || 0) >= limit) {
+           alert(`Você atingiu o limite de ${limit} correções do seu plano ${subscriptionStatus}. Assine um plano superior para continuar.`);
+           navigate('/pricing');
+           return;
+        }
+      }
+    }
+    
     setLoading(true);
     try {
       const imageSrc = webcamRef.current.getScreenshot();
@@ -73,6 +106,24 @@ const ManualCorrection: React.FC = () => {
         totalQuestions: numQuestions,
         studentAnswers: gradingResult.studentAnswers
       });
+
+      // Decrement credits if free user or increment usage if paid
+      if (user && profile) {
+        try {
+          const userRef = doc(db, 'users', user.uid);
+          if (profile.subscriptionStatus === 'free') {
+            await updateDoc(userRef, {
+              freeCredits: profile.freeCredits - 1
+            });
+          } else if (profile.role !== 'admin') {
+             await updateDoc(userRef, {
+              'usage.correctionsMade': (profile.usage?.correctionsMade || 0) + 1
+            });
+          }
+        } catch (dbError) {
+          console.error("Erro ao atualizar uso no Firestore:", dbError);
+        }
+      }
     } catch (error: any) {
       console.error("Erro ao corrigir:", error);
       alert(`Erro: ${error.message || "Ocorreu um problema ao processar a imagem. Tente novamente."}`);

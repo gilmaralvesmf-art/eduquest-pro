@@ -5,6 +5,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import mermaid from 'mermaid';
+import { GeoGebraRenderer } from './GeoGebraRenderer';
 
 mermaid.initialize({
   startOnLoad: false,
@@ -92,14 +93,9 @@ interface MarkdownRendererProps {
 }
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({ content }) => {
-  // If the content looks like a mermaid chart but isn't wrapped in code blocks, wrap it
+  // We no longer auto-wrap mermaid code blocks to avoid false positives with regular text.
+  // The AI is instructed to use proper code blocks.
   let processedContent = content;
-  if (
-    (content.includes('graph ') || content.includes('pie') || content.includes('sequenceDiagram') || content.includes('xychart-beta')) && 
-    !content.includes('```mermaid')
-  ) {
-    processedContent = `\`\`\`mermaid\n${content}\n\`\`\``;
-  }
 
   // Remove \ce commands and fix exatas symbols ONLY outside of code blocks
   const processText = (text: string) => {
@@ -152,8 +148,13 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({ c
         },
         code({ node, inline, className, children, ...props }: any) {
           const match = /language-(\w+)/.exec(className || '');
-          if (!inline && match && match[1] === 'mermaid') {
-            return <Mermaid chart={String(children).replace(/\n$/, '')} />;
+          if (!inline && match) {
+            if (match[1] === 'mermaid') {
+              return <Mermaid chart={String(children).replace(/\n$/, '')} />;
+            }
+            if (match[1] === 'geogebra') {
+              return <GeoGebraRenderer commands={String(children).replace(/\n$/, '')} />;
+            }
           }
           return (
             <code className={className} {...props}>

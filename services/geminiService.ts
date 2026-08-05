@@ -72,14 +72,10 @@ export const generateQuestions = async (
     ? `- Nível de dificuldade equilibrado entre Fácil, Médio e Difícil.`
     : `- Nível de dificuldade: ${difficulty}.`;
 
-  const isExatas = /Matemática|Física|Química|Exatas|Engenharia/i.test(subject);
-  const visualPrompt = isExatas 
-    ? `- EXTRAS EXATAS: É OBRIGATÓRIO o uso de tabelas de dados complexas (Markdown) ou diagramas técnicos (Mermaid) em PELO MENOS 80% das questões.
-       - Para Física: Use diagramas de blocos, circuitos ou vetores.
-       - Para Química: Use tabelas periódicas parciais, tabelas de entalpia ou diagramas de energia.
-       - Para Matemática: Use tabelas de frequência, dados estatísticos ou funções.
-       - IMPORTANTE: Sempre envolva diagramas Mermaid em blocos de código \`\`\`mermaid e use aspas para rótulos de nós que contenham caracteres especiais ou fórmulas.`
-    : `- Elementos Visuais: Use Markdown para tabelas e Mermaid para diagramas em 60% das questões. Envolva diagramas Mermaid em blocos de código \`\`\`mermaid.`;
+  const visualPrompt = `- Elementos Visuais (GeoGebra): Caso a questão seja de Matemática, Física ou Química, você PODE usar o bloco de código \`\`\`geogebra contendo comandos para gerar gráficos ou diagramas.
+       - Use apenas para: Gráficos de funções, geometria, vetores ou trajetórias.
+       - Caso não seja necessário um gráfico, use visualType: "none" e visualContent: "".
+       - Se usar GeoGebra, o campo 'visualType' deve ser "graph" ou "infographic".`;
 
   const generate = async () => {
     return await ai.models.generateContent({
@@ -87,12 +83,12 @@ export const generateQuestions = async (
       contents: `Você é um autor de questões de exames de elite (ITA, IME, FUVEST, ENEM).
       Gere ${count} questões de ${subject} sobre "${topic}"${boardPrompt}.
       
-      Critérios de Qualidade Editorial:
+      Critérios de Qualidade:
       ${difficultyPrompt}
       ${formatPrompt}
       ${visualPrompt}
-      - LaTeX: Use $...$ (inline) ou $$...$$ (block) para TODA e QUALQUER fórmula matemática, unidade física (ex: $kJ/mol$, $m/s^2$) ou símbolo químico.
-      - NÃO use descrições textuais se puder usar uma tabela ou gráfico.
+      - LaTeX: Use $...$ (inline) ou $$...$$ (block) para TODA e QUALQUER fórmula matemática ou símbolo químico.
+      - Retorne o ano (year) e a fonte (source) da questão se for uma questão real, ou "Inédita" se for criada por você.
       
       Retorne APENAS o JSON.`,
       config: {
@@ -109,14 +105,14 @@ export const generateQuestions = async (
               options: { type: Type.ARRAY, items: { type: Type.STRING } },
               correctAnswer: { type: Type.STRING },
               commentary: { type: Type.STRING },
-              visualType: { type: Type.STRING, enum: ["table", "graph", "infographic", "charge", "none"] },
+              visualType: { type: Type.STRING },
               visualContent: { type: Type.STRING },
-              questionType: { type: Type.STRING, enum: ["multiple_choice", "open"] },
-              difficulty: { type: Type.STRING, enum: ["Fácil", "Médio", "Difícil"] },
+              questionType: { type: Type.STRING },
+              difficulty: { type: Type.STRING },
               year: { type: Type.NUMBER },
               source: { type: Type.STRING }
             },
-            required: ["id", "subject", "topic", "text", "correctAnswer", "difficulty", "year", "visualType", "questionType"]
+            required: ["id", "subject", "topic", "text", "correctAnswer"]
           }
         }
       }

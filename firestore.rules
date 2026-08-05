@@ -61,9 +61,10 @@ service cloud.firestore {
     
     function isAdmin() {
       return isAuthenticated() && 
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-         (request.auth.token.email == "gilmaralvesmf@gmail.com" && request.auth.token.email_verified == true));
+        (request.auth.token.email == "gilmaralvesmf@gmail.com" ||
+         request.auth.token.email == "igoraquinodepinho@gmail.com" ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
     }
 
     // ===============================================================
@@ -72,33 +73,20 @@ service cloud.firestore {
     function isValidUser(data) {
       let allowedKeys = ['uid', 'email', 'displayName', 'photoURL', 'freeCredits', 'subscriptionStatus', 'role', 'createdAt', 'usage', 'planExpiresAt', 'isLifetime'];
       return data.keys().hasOnly(allowedKeys) &&
-             data.uid is string && data.uid.size() > 0 && data.uid.size() < 100 &&
-             data.email is string && isValidEmail(data.email) &&
-             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
-             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500)) &&
-             data.freeCredits is number && data.freeCredits >= 0 &&
+             data.uid is string &&
+             data.email is string &&
              data.subscriptionStatus in ['free', 'monthly', 'quarterly', 'semiannual', 'annual', 'lifetime'] &&
              data.role in ['user', 'admin'] &&
-             data.createdAt is string &&
-             (!('planExpiresAt' in data) || data.planExpiresAt == null || data.planExpiresAt is string) &&
-             (!('isLifetime' in data) || data.isLifetime is bool) &&
-             (!('usage' in data) || (
-               data.usage is map &&
-               data.usage.keys().hasOnly(['assessmentsGenerated', 'correctionsMade', 'lastResetDate']) &&
-               data.usage.assessmentsGenerated is number &&
-               data.usage.correctionsMade is number &&
-               data.usage.lastResetDate is string
-             ));
+             (!('usage' in data) || data.usage is map);
     }
 
     function isValidExam(data) {
-      let allowedKeys = ['id', 'authorUid', 'title', 'content', 'createdAt'];
-      return data.keys().hasOnly(allowedKeys) &&
-             data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
-             data.authorUid is string && data.authorUid.size() > 0 && data.authorUid.size() < 100 &&
-             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
-             data.content is string && data.content.size() > 0 && data.content.size() <= 1000000 &&
-             data.createdAt is timestamp;
+      return data.keys().hasAll(['id', 'authorUid', 'title', 'content', 'createdAt']) &&
+             data.id is string &&
+             data.authorUid is string &&
+             data.title is string &&
+             data.content is string &&
+             (data.createdAt is string || data.createdAt is timestamp);
     }
 
     // ===============================================================
@@ -107,36 +95,36 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       
-      // Allow creation if the user is creating their own profile
       allow create: if isAuthenticated() && 
                        isOwner(userId) && 
-                       isValidUser(request.resource.data) && 
-                       request.resource.data.uid == request.auth.uid &&
+                       isValidUser(request.resource.data) &&
                        (
                          isAdmin() || 
                          (
-                           request.resource.data.freeCredits == 3 &&
-                           request.resource.data.subscriptionStatus == 'free' &&
-                           request.resource.data.role == 'user'
-                         )
+                           request.resource.data.role == 'user' &&
+                           request.resource.data.subscriptionStatus == 'free'
+                         ) ||
+                         exists(/databases/$(database)/documents/pending_subscriptions/$(request.auth.token.email))
                        );
                        
-      // Allow update if the user is updating their own profile
       allow update: if isAuthenticated() && 
                        isOwner(userId) && 
-                       isValidUser(request.resource.data) && 
-                       uidNotModified() &&
+                       isValidUser(request.resource.data) &&
                        (
                          isAdmin() || 
                          (
+                           // Non-admins cannot change their role or email
                            request.resource.data.role == resource.data.role &&
                            request.resource.data.email == resource.data.email &&
-                           request.resource.data.createdAt == resource.data.createdAt &&
+                           // Protected fields: once set, cannot be changed by user
+                           (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt) &&
+                           
                            (
-                             // Either they are just updating their metadata/usage
-                             request.resource.data.freeCredits == resource.data.freeCredits ||
-                             // Or they are decrementing their free credits by exactly 1
-                             (request.resource.data.freeCredits == resource.data.freeCredits - 1 && resource.data.freeCredits > 0)
+                             // Allow updating subscription status to free (expiry) or keeping it the same
+                             request.resource.data.subscriptionStatus == 'free' ||
+                             request.resource.data.subscriptionStatus == resource.data.subscriptionStatus ||
+                             // Allow upgrading if they have a pending subscription
+                             exists(/databases/$(database)/documents/pending_subscriptions/$(request.auth.token.email))
                            )
                          )
                        );
