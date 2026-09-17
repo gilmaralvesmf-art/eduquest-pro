@@ -89,7 +89,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }
 
               // Auto-upgrade creator to admin with lifetime credits
-              if (currentUser.email === 'gilmaralvesmf@gmail.com' && (data.role !== 'admin' || data.subscriptionStatus !== 'lifetime' || !data.isLifetime)) {
+              const isAdminEmail = currentUser.email === 'gilmaralvesmf@gmail.com' || 
+                                 currentUser.email === 'igoraquinodepinho@gmail.com' ||
+                                 currentUser.email === 'euprofgilmaralves@gmail.com';
+
+              if (isAdminEmail && (data.role !== 'admin' || data.subscriptionStatus !== 'lifetime' || !data.isLifetime)) {
                 updates.role = 'admin';
                 updates.subscriptionStatus = 'lifetime';
                 updates.isLifetime = true;
@@ -131,8 +135,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
               }
               
-              // Check if plan expired
-              if (data.subscriptionStatus !== 'free' && data.planExpiresAt) {
+              // Check if plan expired (except for admins)
+              if (data.subscriptionStatus !== 'free' && data.planExpiresAt && data.role !== 'admin') {
                 const expiresAt = new Date(data.planExpiresAt);
                 const now = new Date();
                 if (now > expiresAt) {
@@ -144,11 +148,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
               }
 
-              setProfile(data);
+              // Special logic for Super Admins to ensure total unlimited access
+              const isSuperAdminEmail = currentUser.email === 'gilmaralvesmf@gmail.com' || 
+                                      currentUser.email === 'igoraquinodepinho@gmail.com' ||
+                                      currentUser.email === 'euprofgilmaralves@gmail.com';
+              if (isSuperAdminEmail && (data.role !== 'admin' || data.subscriptionStatus !== 'lifetime')) {
+                const updatedAdminProfile = {
+                  ...data,
+                  role: 'admin',
+                  subscriptionStatus: 'lifetime',
+                  isLifetime: true,
+                  freeCredits: 999999
+                };
+                await setDoc(userRef, updatedAdminProfile);
+                setProfile(updatedAdminProfile as UserProfile);
+              } else {
+                setProfile(data);
+              }
             } else {
               // Create new user profile
-              const isAdmin = currentUser.email === 'gilmaralvesmf@gmail.com';
-              const isAnnual = currentUser.email === 'igoraquinodepinho@gmail.com';
+              const isAdmin = currentUser.email === 'gilmaralvesmf@gmail.com' || 
+                            currentUser.email === 'igoraquinodepinho@gmail.com' ||
+                            currentUser.email === 'euprofgilmaralves@gmail.com';
+              const isAnnual = false; // Combined into isAdmin check
               
               // Check for pending subscription from Kiwify
               let pendingSub: any = null;
@@ -173,11 +195,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 email: currentUser.email || '',
                 displayName: currentUser.displayName || '',
                 photoURL: currentUser.photoURL || '',
-                freeCredits: isAdmin ? 999999999 : (isAnnual ? 999999 : (pendingSub ? 999999 : 3)),
-                subscriptionStatus: isAdmin ? 'lifetime' : (isAnnual ? 'annual' : (pendingSub ? pendingSub.plan : 'free')),
+                freeCredits: isAdmin ? 999999 : (pendingSub ? 999999 : 3),
+                subscriptionStatus: isAdmin ? 'lifetime' : (pendingSub ? pendingSub.plan : 'free'),
                 isLifetime: isAdmin,
                 role: isAdmin ? 'admin' : 'user',
-                planExpiresAt: isAnnual ? oneYearFromNow.toISOString() : (pendingSub ? pendingSub.expiresAt : null),
+                planExpiresAt: (pendingSub ? pendingSub.expiresAt : null),
                 createdAt: new Date().toISOString(),
                 usage: {
                   assessmentsGenerated: 0,

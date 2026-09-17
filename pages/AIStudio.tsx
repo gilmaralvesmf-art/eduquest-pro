@@ -286,8 +286,11 @@ const AIStudio: React.FC = () => {
                 >
                   <option>Matemática</option>
                   <option>Português</option>
+                  <option>Ciências</option>
                   <option>História</option>
                   <option>Geografia</option>
+                  <option>Alfabetização</option>
+                  <option>Ensino Religioso</option>
                   <option>Biologia</option>
                   <option>Física</option>
                   <option>Química</option>
@@ -295,19 +298,20 @@ const AIStudio: React.FC = () => {
                   <option>Sociologia</option>
                   <option>Filosofia</option>
                   <option>Artes</option>
+                  <option>Educação Física</option>
                 </select>
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Assunto Detalhado</label>
-                <input 
-                  type="text"
-                  placeholder="Ex: Revolução Industrial na Inglaterra"
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                  required
-                />
+                  <input 
+                    type="text"
+                    placeholder="Ex: Frações, Reino Animal, Independência do Brasil..."
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:border-indigo-600 focus:bg-white outline-none transition-all"
+                    required
+                  />
               </div>
 
               <div className="space-y-2 relative">
@@ -323,6 +327,7 @@ const AIStudio: React.FC = () => {
                 {isBoardDropdownOpen && (
                   <div className="absolute z-50 w-full mt-2 bg-white border-2 border-slate-100 rounded-2xl shadow-xl max-h-60 overflow-y-auto p-2">
                     {[
+                      { label: 'Níveis de Ensino', options: ['Fundamental Anos Iniciais', 'Fundamental Anos Finais', 'Ensino Médio', 'Ensino Superior'] },
                       { label: 'Militares', options: ['ITA', 'IME', 'EsPCEx', 'ESA', 'Colégio Naval', 'EPCAR', 'AFA', 'EFOMM', 'EAM'] },
                       { label: 'Vestibulares', options: ['ENEM', 'FUVEST', 'UNICAMP', 'UNESP (VUNESP)', 'UERJ', 'UFRGS', 'UFSC', 'URCA', 'UECE', 'UPE', 'UFPE'] },
                       { label: 'Concursos', options: ['FGV', 'FCC', 'Cebraspe'] }

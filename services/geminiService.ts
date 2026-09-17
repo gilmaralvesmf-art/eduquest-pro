@@ -60,7 +60,9 @@ export const generateQuestions = async (
   const apiKey = await getApiKey();
   const ai = new GoogleGenAI({ apiKey });
   
-  const boardPrompt = boards && boards.length > 0 ? ` no estilo das bancas: ${boards.join(', ')}` : "";
+  const boardPrompt = boards && boards.length > 0 
+    ? `. Considere os seguintes estilos, bancas ou níveis de ensino: ${boards.join(', ')}` 
+    : "";
   
   const formatPrompt = questionType === 'multiple_choice'
     ? `- Cada questão deve ter um enunciado claro e 5 alternativas (A, B, C, D, E).\n- Marque a alternativa correta.\n- O campo 'options' deve ter 5 itens.`
